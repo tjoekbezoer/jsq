@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>JSQ Parser</title>
+		
+		<style type="text/css">
+			input[type="text"] {
+				border: 1px solid #C0C0C0;
+				font-size: 14px;
+				padding: 5px 3px;
+				width: 100%;
+				-webkit-box-sizing: border-box;
+			}
+			input[type="text"]:focus {
+				outline: none;
+			}
+			
+			span {
+				border: 1px solid #000;
+				font-family: 'Courier New';
+				font-size: 12px;
+				padding: 1px 2px;
+			}
+			span.op_unary,
+			span.op_binary,
+			span.op_assign,
+			span.ctl {
+				background-color: deepskyblue;
+			}
+			span.var {
+				background-color: orchid;
+			}
+			span.id {
+				background-color: yellow;
+			}
+			span.nr {
+				background-color: orangered;
+			}
+			span.str {
+				background-color: orange;
+			}
+			span.wsp,
+			span.eof {
+				background-color: mistyrose;
+			}
+		</style>
+	</head>
+	<body>
+		<input type="text" id="query"/>
+		
+		<div id="lexer"></div>
+		
+		<script type="text/javascript" src="jsq.js"></script>
+		<script type="text/javascript">
+			var input = document.getElementById('query'),
+				lexer = document.getElementById('lexer');
+			
+			input.focus();
+			input.onkeyup = function( event ) {
+				try {
+					var q = jsq(null, event.target.value),
+						tokens = q.lexer.tokens;
+					
+					lexer.innerHTML = '';
+					for( var i=0; i<tokens.length; i++ ) {
+						var token = tokens[i],
+							type = q.lexer.type(token.type);
+						
+						lexer.innerHTML += [
+							'<span class='+type+'>',
+							type=='eof' && '&lt;EOF&gt;' || token.data,
+							'</span>'
+						].join('');
+					}
+				} catch(e) {
+					//console.log(e.message);
+				}
+			};
+		</script>
+	</body>
+</html>
