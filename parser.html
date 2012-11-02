@@ -7,6 +7,7 @@
 			input[type="text"] {
 				border: 1px solid #C0C0C0;
 				font-size: 14px;
+				margin: 0;
 				padding: 5px 3px;
 				width: 100%;
 				-webkit-box-sizing: border-box;
@@ -33,7 +34,7 @@
 			span.id {
 				background-color: yellow;
 			}
-			span.nr {
+			span.int {
 				background-color: orangered;
 			}
 			span.str {
@@ -43,37 +44,106 @@
 			span.eof {
 				background-color: mistyrose;
 			}
+			
+			#lexer {
+				margin-bottom: 10px;
+			}
+			#parser {
+				font-family: Helvetica, sans-serif;
+				font-size: 10px;
+				overflow: hidden;
+			}
+				#parser .block {
+					border: 1px solid gray;
+					border-radius: 5px;
+					font-size: 14px;
+					display: inline-block;
+					overflow: hidden;
+					vertical-align: center;
+				}
+					#parser .block h3 {
+						background-color: lightgray;
+						border-bottom: 1px solid gray;
+						color: #000;
+						font-size: 12px;
+						font-weight: 700;
+						margin: 0px;
+						padding: 0px 5px;
+					}
+					#parser .block .block {
+						margin: 5px;
+					}
 		</style>
 	</head>
 	<body>
 		<input type="text" id="query"/>
 		
 		<div id="lexer"></div>
+		<div id="parser">
+			<div class="block"></div>
+		</div>
 		
+		
+		<script type="text/javascript" src="zepto.js"></script>
 		<script type="text/javascript" src="jsq.js"></script>
 		<script type="text/javascript">
 			var input = document.getElementById('query'),
 				lexer = document.getElementById('lexer');
 			
+			var blockEl = $('.block');
+			blockEl.remove();
+			
 			input.focus();
 			input.onkeyup = function( event ) {
 				try {
 					var q = jsq(null, event.target.value),
-						tokens = q.lexer.tokens;
+						tokens = q.tokens,
+						token;
 					
+					// Lexer
 					lexer.innerHTML = '';
-					for( var i=0; i<tokens.length; i++ ) {
-						var token = tokens[i],
-							type = q.lexer.type(token.type);
+					tokens.reset();
+					while( token = tokens.current() ) {
+						var type = tokens.type(token.type);
 						
 						lexer.innerHTML += [
 							'<span class='+type+'>',
-							type=='eof' && '&lt;EOF&gt;' || token.data,
+							token.data,
 							'</span>'
 						].join('');
+						
+						tokens.next();
 					}
+					if( lexer.innerHTML )
+						lexer.innerHTML += '<span class=eof>&lt;EOF&gt;</span>';
+					
+					// Parser
+					var current = $('#parser');
+					current.empty();
+					
+					(function( block ) {
+						var b = blockEl.clone();
+						b.append('<h3>'+block.name+'('+block.index+')</h3>');
+						current.append(b);
+						current = b;
+						
+						if( block.children.length ) {
+							for(
+								var i=0, c=block.children, l=c.length, e;
+								i<l && (e=c[i]);
+								i++
+							) {
+								b.append(arguments.callee(e));
+							}
+						} else {
+							b.append(block.value||'');
+						}
+						
+						return b;
+					})(q.tree);
 				} catch(e) {
-					//console.log(e.message);
+					console.log(e);
+					//throw e;
 				}
 			};
 		</script>
