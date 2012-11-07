@@ -14,9 +14,9 @@
 			// (4) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
 			// (5) variable
-			'(\\$[a-z_]+)|',
+			'(\\$[a-z_][a-z0-9_]*)|',
 			// (6) identifier
-			'([a-z_]+)|',
+			'([a-z_][a-z0-9_]*)|',
 			// (7) float
 			'(\\d+\\.\\d+)|',
 			// (8) integer
@@ -60,7 +60,7 @@
 			
 			// See what kind of token this is, and add it to the stack.
 			// This line is based on the fact that token will always return an array like
-			// [matched string, [subpattern, ...]], so in this case 9 elements after the
+			// [matched string, [subpattern, ...]], so in this case 10 elements after the
 			// matched string.
 			i = 0; while( ++i<=10 && token[i]==void(0) );
 			tokens.push({
@@ -91,6 +91,13 @@
 	Lexer.prototype.reset = function() {
 		this.i = 0;
 	};
+	Lexer.prototype.skip = function( returnNext ) {
+		var t;
+		while( (t = this.peek()) && t.type == _t.wsp )
+			this.next();
+		
+		return (returnNext && this.next()) || !this.eof();
+	};
 	// Only useful for testing outside this closure (parser.html)
 	Lexer.prototype.type = function( typeId ) {
 		for( type in _tokenTypes ) {
@@ -101,8 +108,11 @@
 	};
 	
 	var Parser = function( query ) {
+		// Unique ID for every branch
+		this.id = 0;
 		this.tokens = new Lexer(query);
 		this.tree = {
+			id: this.id++,
 			name: 'program',
 			parent: null,
 			index: 0,
@@ -117,6 +127,7 @@
 			d.parent = this.current;
 		} else {
 			d = {
+				id: this.id++,
 				name: name,
 				parent: this.current,
 				index: 0,
@@ -128,7 +139,8 @@
 	};
 	// parse() is the root parse method.
 	Parser.prototype.parse = function() {
-		var token, branch;
+		var branchId = this.current.id,
+			token;
 		
 		while( token = this.tokens.current() ) {
 			switch( token.data ) {
@@ -141,100 +153,131 @@
 					this.parse();
 					break;
 				case ')':
-					if( this.current.name != 'parens' )
+					if( this.current.name != 'parens' && this.current.name != 'pipe' )
 						throw 'jsq_parse: Unexpected ) at position '+token.index;
 					this.up();
 					break;
 				case ',':
 					this.parse_comma();
 					break;
+				case '|':
+					this.parse_pipe();
+					break;
 				default:
 					switch( token.type ) {
 						case _t.wsp:
-							break;
+							this.tokens.next();
+							continue;
 						case _t.id:
+							this.parse_id();
+							break;
 						case _t.flt:
 						case _t.int:
 						case _t.str:
 							this.parse_literal();
 							break;
 						default:
-							throw 'jsq_parse: Unrecognized '+token.data+' at position '+token.index;
+							throw 'jsq_parse: Unrecognized \''+token.data+'\' at position '+token.index;
 					}
 						
 			}
 			
+			// If this is a subroutine of parse(), break out when
+			// were back in the branch where it was called
+			if( this.current.id && this.current.id == branchId )
+				return;
+			
 			this.tokens.next();
 		}
+		
+		if( this.tokens.eof() && this.current.name != 'program' )
+			throw 'jsq_parse: Unexpected EOF';
+		
+		return this;
 	};
+	// parse_comma() parses the entire collection, contrary to what e.g. parse_pipe() does.
+	// This is because a comma collection can only exist of query expressions in the root
+	// branch or nested inside an array, object or parens. Collections cannot be nested.
 	Parser.prototype.parse_comma = function() {
-		var peek, token;
+		var first, peek, token;
+		
+		if( this.current.children[0].name != 'query' )
+			throw 'jsq_parse_comma: Unexpected , at position '+this.tokens.current().index;	
 		
 		if( this.current.name != 'comma' ) {
-			if( !this.current.children.length ||
-				this.current.children.length > 1 ||
-				this.current.children[0].name != 'query'
-			) {
-				throw 'jsq_parse_comma: Unexpected , at position '+this.tokens.current().index;	
-			}
-			
-			this.add('comma');
-			this.add(this.current.parent.children.shift());
-			this.up();
+			this.wrap('comma');
 			
 			// Now parse the rest of the comma structure
-			while(
-				(peek = this.tokens.peek()) && (
-					peek.type == _t.wsp ||
-					peek.data == '.' ||
-					peek.data == ','
-				)
-			) {
-				token = this.tokens.next();
-				switch( token.data ) {
-					case '.':
-						this.parse_query();
+			while( true ) {
+				token = this.tokens.skip(true);
+				if( token && token.data == '.' ) {
+					this.parse_query();
+					
+					this.tokens.skip();
+					token = this.tokens.peek();
+					if( !token ) {
 						break;
+					}
+					else if(
+						token.data == ','
+					) {
+						this.tokens.next();
+						continue;
+					} else if(
+						token.data == ')' ||
+						token.data == '}' ||
+						token.data == ']' ||
+						token.data == '|'
+					) {
+						break;
+					}
 				}
+				
+				if( token )
+					throw 'jsq_parse_comma: Unexpected \''+token.data+'\' at position '+token.index;
+				else
+					throw 'jsq_parse_comma: Unexpected EOF';
 			}
 			
 			this.up();
 		}
 	};
+	Parser.prototype.parse_id = function() {
+		var token = this.tokens.current();
+		
+		this.add('function_call').value = token.data;
+		this.up();
+	};
 	Parser.prototype.parse_literal = function() {
-		var token = this.tokens.current(),
-			type;
+		var token = this.tokens.current();
 		
-		switch( token.type ) {
-			case _t.id:
-				type = 'id';
-				break;
-			case _t.flt:
-				type = 'float';
-				break;
-			case _t.int:
-				type = 'integer';
-				break;
-			case _t.str:
-				type = 'string';
-				break;
-		}
+		this.add('literal').value = token.data;
 		
-		if( type ) {
-			this.add(type).value = token.data;
-			this.up();
-		}
+		if( this.current.parent.name != 'binary' &&
+			this.current.index
+		)
+			throw 'jsq_parse_literal: Unexpected \''+token.data+'\' at position '+token.index;
+		
+		this.up();
+	};
+	Parser.prototype.parse_pipe = function() {
+		if( this.current.name != 'pipe' )
+			this.wrap('pipe');
+		
+		this.tokens.next();
+		this.parse();
+		this.up();
 	};
 	Parser.prototype.parse_query = function() {
 		var token, peek, d;
 		
 		this.add('query');
 		
-		// The start of a query must be the start of the expression,
+		// This query must be the start of the expression,
 		// or follow a comma or pipe.
 		if( this.current.index && !(
-				this.current.parent.name == 'comma'
-				// TODO: pipe
+				this.current.parent.name == 'comma' ||
+				this.current.parent.name == 'pipe'
 			)
 		) {
 			throw 'jsq_parse_query: Unexpected . at position '+this.tokens.current().index;
@@ -246,25 +289,43 @@
 			peek.data != ')' &&
 			peek.data != '}' &&
 			peek.data != ']' &&
+			peek.data != '|' &&
 			peek.data != ','
 		) {
 			token = this.tokens.next();
 			if(
-				token.type == _t.var ||
-				token.type == _t.id ||
-				token.type == _t.int ||
-				token.type == _t.str
+				token.data == '['
 			) {
-				d = this.add('key_name');
-				d.value = token.data;
-				this.up();
-			} else if(
-				token.data == '.'
-			) {
-				continue;
-			} else {
-				throw 'jsq_parse_query: Unrecognized token '+token.data+' at position '+token.index;
+				token = this.tokens.next();
+				if(
+					token && (
+						token.type == _t.var ||
+						token.type == _t.id ||
+						token.type == _t.int ||
+						token.type == _t.str
+					)
+				) {
+					d = this.add('key_name');
+					d.value = token.data;
+					this.up();
+					
+					token = this.tokens.next();
+					if( token && token.data == ']' )
+						continue;
+				} else if(
+					token &&
+					token.data == ']'
+				) {
+					this.add('key_all');
+					this.up();
+					continue;
+				}
 			}
+			
+			if( token )
+				throw 'jsq_parse_query: Unexpected \''+token.data+'\' at position '+token.index;
+			else
+				throw 'jsq_parse_query: Unexpected EOF';
 		}
 		
 		this.up();
@@ -278,13 +339,32 @@
 			throw 'jsq_up: Fatal internal error. Bug?';
 		}
 	};
+	// Say you have:
+	//    program > query
+	// Now when you do wrap('comma'):
+	//    program > comma > query
+	Parser.prototype.wrap = function( name ) {
+		var first;
+		
+		if( !this.current.children.length || this.current.children.length > 1 )
+			throw 'jsq_wrap: Unexpected '+this.tokens.current().data+' at position '+this.tokens.current().index;
+		
+		first = this.current.children.shift();
+		this.add(name);
+		this.add(first);
+		this.up();
+	};
 	
 	
 	// Public jsq() function
-	var jsq = _exports[_name] = function( data, query, callback, context ) {
+	var jsq = function( data, query, callback, context ) {
 		var parser = new Parser(query);
 		parser.parse();
 		
 		return parser;
 	};
+	jsq.Lexer = Lexer;
+	jsq.Parser = Parser;
+	
+	_exports[_name] = jsq;
 })(typeof exports=='undefined'?this:exports, 'jsq');
