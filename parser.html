@@ -44,6 +44,11 @@
 			span.eof {
 				background-color: mistyrose;
 			}
+			span.error {
+				background-color: lightpink;
+				border: 1px solid firebrick;
+				color: firebrick;
+			}
 			
 			#lexer {
 				margin-bottom: 10px;
@@ -52,6 +57,7 @@
 				font-family: Helvetica, sans-serif;
 				font-size: 10px;
 				overflow: hidden;
+				padding: 2px 0px;
 			}
 				#parser .block {
 					border: 1px solid gray;
@@ -88,20 +94,23 @@
 		<script type="text/javascript" src="jsq.js"></script>
 		<script type="text/javascript">
 			var input = document.getElementById('query'),
-				lexer = document.getElementById('lexer');
+				lexer = document.getElementById('lexer'),
+				parser = document.getElementById('parser');
 			
 			var blockEl = $('.block');
 			blockEl.remove();
 			
 			input.focus();
 			input.onkeyup = function( event ) {
+				lexer.innerHTML = '';
+				
 				try {
-					var q = jsq(null, event.target.value),
-						tokens = q.tokens,
+					var query = event.target.value,
+						//q = jsq(null, value),
+						tokens = new jsq.Lexer(query),
 						token;
 					
 					// Lexer
-					lexer.innerHTML = '';
 					tokens.reset();
 					while( token = tokens.current() ) {
 						var type = tokens.type(token.type);
@@ -121,29 +130,30 @@
 					var current = $('#parser');
 					current.empty();
 					
-					(function( block ) {
+					(function( branch ) {
 						var b = blockEl.clone();
-						b.append('<h3>'+block.name+'('+block.index+')</h3>');
+						b.append('<h3>'+branch.name+'('+branch.index+')</h3>');
 						current.append(b);
 						current = b;
 						
-						if( block.children.length ) {
+						if( branch.children.length ) {
 							for(
-								var i=0, c=block.children, l=c.length, e;
+								var i=0, c=branch.children, l=c.length, e;
 								i<l && (e=c[i]);
 								i++
 							) {
 								b.append(arguments.callee(e));
 							}
 						} else {
-							b.append(block.value||'');
+							b.append(branch.value||'');
 						}
 						
 						return b;
-					})(q.tree);
+					})( (new jsq.Parser(query)).parse().tree );
+					
 				} catch(e) {
-					console.log(e);
-					//throw e;
+					//console.log(e);
+					parser.innerHTML = '<span class=error>'+e.toString()+'</span>';
 				}
 			};
 		</script>
