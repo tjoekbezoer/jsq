@@ -22,19 +22,19 @@
 				font-size: 12px;
 				padding: 1px 2px;
 			}
-			span.op_unary,
-			span.op_binary,
-			span.op_assign,
+			span.op_uny,
+			span.op_bny,
+			span.op_cmp,
 			span.ctl {
 				background-color: deepskyblue;
 			}
-			span.var {
+			span.vrb {
 				background-color: orchid;
 			}
 			span.id {
 				background-color: yellow;
 			}
-			span.int {
+			span.itg {
 				background-color: orangered;
 			}
 			span.str {
@@ -60,21 +60,36 @@
 				padding: 2px 0px;
 			}
 				#parser .block {
+					background-color: #FFF;
 					border: 1px solid gray;
 					border-radius: 5px;
-					font-size: 14px;
 					display: inline-block;
 					overflow: hidden;
 					vertical-align: center;
 				}
+				#parser .block.over {
+					background-color: #C1CEF2;
+				}
+					#parser .block.over > h3 {
+						background-color: #839CE6;
+					}
 					#parser .block h3 {
 						background-color: lightgray;
 						border-bottom: 1px solid gray;
 						color: #000;
-						font-size: 12px;
+						font-size: 11px;
 						font-weight: 700;
 						margin: 0px;
-						padding: 0px 5px;
+						padding: 2px 5px;
+					}
+					#parser .block p {
+						background-color: lightgray;
+						border: 1px solid blue;
+						float: left;
+						font-size: 14px;
+						font-weight: bold;
+						margin: 2px 5px;
+						padding: 1px 2px;
 					}
 					#parser .block .block {
 						margin: 5px;
@@ -100,20 +115,25 @@
 			var blockEl = $('.block');
 			blockEl.remove();
 			
+			$('#parser').on('mouseover', '.block', function() {
+				return !$(this).addClass('over');
+			}).on('mouseout', '.block', function() {
+				return !$(this).removeClass('over');
+			});
+			
 			input.focus();
 			input.onkeyup = function( event ) {
+				document.location.hash = input.value;
 				lexer.innerHTML = '';
 				
 				try {
 					var query = event.target.value,
-						//q = jsq(null, value),
 						tokens = new jsq.Lexer(query),
 						token;
 					
 					// Lexer
-					tokens.reset();
 					while( token = tokens.current() ) {
-						var type = tokens.type(token.type);
+						var type = _type(token.type);
 						
 						lexer.innerHTML += [
 							'<span class='+type+'>',
@@ -145,17 +165,36 @@
 								b.append(arguments.callee(e));
 							}
 						} else {
-							b.append(branch.value||'');
+							b.append(branch.value ?
+								'<p>'+branch.value+'</p>':
+								''
+							);
 						}
 						
 						return b;
 					})( (new jsq.Parser(query)).parse().tree );
 					
 				} catch(e) {
-					//console.log(e);
 					parser.innerHTML = '<span class=error>'+e.toString()+'</span>';
 				}
 			};
+			if( !input.value ) {
+				input.value = document.location.hash.substr(1);
+				debug((new jsq.Parser(input.value)).parse().toJSON());
+			}
+			input.onkeyup({target:input});
+			
+			function _type( typeId ) {
+				for( type in jsq.Lexer.tokenTypes ) {
+					if( jsq.Lexer.tokenTypes[type] == typeId )
+						return type;
+				}
+				return null;
+			}
+			
+			function debug() {
+				console.log.apply(console, arguments);
+			}
 		</script>
 	</body>
 </html>
