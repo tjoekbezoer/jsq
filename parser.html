@@ -23,7 +23,7 @@
 				padding: 1px 2px;
 			}
 			span.op_uny,
-			span.op_bny,
+			span.op_arm,
 			span.op_cmp,
 			span.ctl {
 				background-color: deepskyblue;
@@ -34,7 +34,8 @@
 			span.id {
 				background-color: yellow;
 			}
-			span.itg {
+			span.itg,
+			span.flt {
 				background-color: orangered;
 			}
 			span.str {
@@ -110,7 +111,8 @@
 		<script type="text/javascript">
 			var input = document.getElementById('query'),
 				lexer = document.getElementById('lexer'),
-				parser = document.getElementById('parser');
+				// Global parser object, is assigned in keyup event
+				parser;
 			
 			var blockEl = $('.block');
 			blockEl.remove();
@@ -123,6 +125,16 @@
 			
 			input.focus();
 			input.onkeyup = function( event ) {
+				if( event.keyCode == 13 ) {
+					if( parser ) {
+						debug(parser.tree);
+						debug(JSON.stringify(parser.toJSON()));
+						return;
+					}
+				} else if( event.keyCode == 27 ) {
+					input.value = '';
+				}
+				
 				document.location.hash = input.value;
 				lexer.innerHTML = '';
 				
@@ -135,12 +147,7 @@
 					while( token = tokens.current() ) {
 						var type = _type(token.type);
 						
-						lexer.innerHTML += [
-							'<span class='+type+'>',
-							token.data,
-							'</span>'
-						].join('');
-						
+						lexer.innerHTML += '<span class='+type+'>'+token.data+'</span>';
 						tokens.next();
 					}
 					if( lexer.innerHTML )
@@ -150,8 +157,14 @@
 					var current = $('#parser');
 					current.empty();
 					
-					(function( branch ) {
-						var b = blockEl.clone();
+					(function( obj ) {
+						var branch = obj.tree || obj,
+							b = blockEl.clone();
+						
+						// Global access
+						if( obj.tree )
+							parser = obj;
+						
 						b.append('<h3>'+branch.name+'('+branch.index+')</h3>');
 						current.append(b);
 						current = b;
@@ -172,15 +185,14 @@
 						}
 						
 						return b;
-					})( (new jsq.Parser(query)).parse().tree );
+					})( (new jsq.Parser(query)).parse() );
 					
 				} catch(e) {
-					parser.innerHTML = '<span class=error>'+e.toString()+'</span>';
+					$('#parser').html('<span class=error>'+e.toString()+'</span>');
 				}
 			};
 			if( !input.value ) {
 				input.value = document.location.hash.substr(1);
-				debug((new jsq.Parser(input.value)).parse().toJSON());
 			}
 			input.onkeyup({target:input});
 			
