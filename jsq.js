@@ -8,7 +8,7 @@
 			// (2) binary operator
 			'([-+*/])|',
 			// (3) comparison operator
-			'((?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
+			'((?:&&)|(?:\\|\\|)|(?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
 			// (4) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
 			// (5) variable
@@ -77,12 +77,12 @@
 	Lexer.prototype.current = function() {
 		return this.tokens[this.i] || null;
 	};
-	Lexer.prototype.eof = function() {
-		return this.i+1 >= this.tokens.length;
-	};
 	Lexer.prototype.next = function( num ) {
 		this.i += num || 1;
 		return this.tokens[this.i] || null;
+	};
+	Lexer.prototype.eof = function() {
+		return this.i+1 >= this.tokens.length;
 	};
 	Lexer.prototype.peek = function( skip ) {
 		var num = this.i + 1;
@@ -213,13 +213,17 @@
 		
 		if(
 			lhs && (
-				token.type == _t.op_arm &&
-				lhs.name == 'comma' || (
-					lhs.name == 'binary' && (
-						lhs.children[1].type == _t.op_cmp || (
-							(token.data == '*' || token.data == '/') &&
-							(lhs.children[1].value == '+' || lhs.children[1].value == '-')
-						)
+				token.type == _t.op_arm && lhs.name == 'comma' ||
+				// The left hand side is a binary, so it has 3 children:
+				// a lhs, an operator and a rhs. Perform an action based on
+				// its operator.
+				lhs.name == 'binary' && (
+					(
+						lhs.children[1].type == _t.op_cmp &&
+						token.data != '||'
+					) || (
+						(token.data == '*' || token.data == '/') &&
+						(lhs.children[1].value == '+' || lhs.children[1].value == '-')
 					)
 				)
 			)
@@ -429,11 +433,13 @@
 	// Now when you do wrap('comma'):
 	//    program > comma > filter
 	Parser.prototype.wrap = function( name ) {
-		var first, ret;
+		var last, parent, ret;
 		
-		first = this.current.children.pop();
+		last = this.current.children.pop();
+		last.parent.last = last.parent.children[last.parent.children.length-1] || null;
+		
 		ret = this.add(name);
-		this.add(first);
+		this.add(last);
 		this.up();
 		
 		return ret;
