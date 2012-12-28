@@ -1,6 +1,6 @@
 
 
-(function( _exports, _name ) {
+(function( _exports ) {
 	var _regex = new RegExp(
 		[
 			// (1) unary operator
@@ -40,6 +40,59 @@
 		wsp: 10
 	};
 	
+	// Extend target object with the properties from the given source objects.
+	function _extend( target /*[, source]...*/ ) {
+		var args = Array.prototype.slice.call(arguments, 1);
+		for( var i=0; i<args.length; i++ ) {
+			for( var key in args[i] ) {
+				target[key] = args[i][key];
+			}
+		}
+		return target;
+	}
+	function _concat( array1, array2 ) {
+		if( !(array1 instanceof Array) )
+			array1 = [array1];
+		if( !(array2 instanceof Array) )
+			array2 = [array2];
+		return array1.concat(array2);
+	}
+	// When target is an object: return a shallow copy of target from which all keys
+	// also existing in source are removed. Both arguments have to be objects.
+	// When target is an array: return a copy of target where all values also existing in
+	// source are removed. In this case, source can also be a scalar value.
+	function _without( target, source ) {
+		var key, key_target;
+		if( target instanceof Array ) {
+			if( !(source instanceof Object) )
+				source = [source];
+			target = target.slice(0);
+			// Exclude values found in the source array
+			for( var i=0; i<source.length; i++ ) {
+				value = source[i];
+				for( var j=0; j<target.length; j++ ) {
+					if( target[j] === value )
+						target.splice(j, 1);
+				}
+			}
+		} else if( target instanceof Object && source instanceof Object ) {
+			target = _extend({}, target);
+			// Exclude keys found in the source object
+			for( key in source ) {
+				for( key_target in target ) {
+					if( key_target == key )
+						delete target[key_target];
+				}
+			}
+		} else {
+			// target is neither object nor array
+			target = null;
+		}
+		
+		
+		return target;
+	}
+	
 	// TODO: Optimize throw mechanism. Group error strings here?
 	//function _error( msg )
 	
@@ -61,6 +114,8 @@
 			// [matched string, [subpattern, ...]], so in this case 10 elements after the
 			// matched string.
 			i = 0; while( ++i<=10 && token[i]==void(0) ){}
+			if( i == _t.str )
+				token[0] = token[0].slice(1,-1);
 			tokens.push({
 				type: i,
 				index: _regex.lastIndex,
@@ -328,12 +383,14 @@
 				token.type == _t.str
 			)
 		) {
-			if( token.type == _t.str )
+			if( token.type == _t.str ) {
 				current = this.add('string');
-			else
+				current.value = token.data;
+			} else {
 				current = this.add('number');
+				current.value = parseFloat(token.data);
+			}
 			
-			current.value = token.data;
 			this.up();
 			parent = this.current;
 			
@@ -361,7 +418,7 @@
 				if(
 					token && (
 						token.type == _t.vrb ||
-						token.type == _t.id  ||
+						//token.type == _t.id  ||
 						token.type == _t.itg ||
 						token.type == _t.str
 					)
@@ -446,12 +503,144 @@
 	};
 	
 	
+	// Runtime
+	function run( input, output, branch ) {
+		if( branch.children && branch.children.length ) {
+			switch( branch.children[0].name ) {
+				default:
+					_expression(input, output, branch.children[0]);	
+			}
+		}
+		
+		return output;
+	}
+	function _binary( input, output, branch ) {
+		var op = branch.children[1].value,
+			lhv = branch.children[0],
+			rhv = branch.children[2];
+		var l = lhv.name == 'number' ?
+			[lhv.value] :
+			_expression(input, [], lhv);
+		var r = rhv.name == 'number' ?
+			[rhv.value] :
+			_expression(input, [], rhv);
+		var i, j, ret, key;
+		
+		for( i=0; i<l.length; i++ ) {
+			for( j=0; j<r.length; j++ ) {
+				switch( op ) {
+					// Perform arithmetic operation on values
+					case '+':
+						if( !(l[i] instanceof Object || r[j] instanceof Object) )
+							ret = l[i] + r[j];
+						else if( l[i] instanceof Array || r[j] instanceof Array )
+							ret = _concat(l[i], r[j]);
+						else if( l[i] instanceof Object && r[j] instanceof Object )
+							ret = _extend({}, l[i], r[j]);
+						break;
+					case '-':
+						if( l[i] instanceof Object || r[j] instanceof Object )
+							ret = _without(l[i], r[j]);
+						else
+							ret = l[i] - r[j];
+						break;
+					case '*':
+					case '/':
+					case '&&':
+					case '||':
+					case '==':
+					case '!=':
+					case '>=':
+					case '<=':
+					case '>':
+					case '<':
+						ret = _binary.op[op](l[i], r[j]);
+						break;
+				}
+				ret != void(0) && output.push(ret);
+				ret = void(0);
+			}
+		}
+	}
+	_binary.op = {
+		'*':  function( l, r ) { return l * r },
+		'/':  function( l, r ) { return l / r },
+		'&&': function( l, r ) { return l && r },
+		'||': function( l, r ) { return l || r },
+		'==': function( l, r ) { return l == r },
+		'!=': function( l, r ) { return l != r },
+		'>=': function( l, r ) { return l >= r },
+		'<=': function( l, r ) { return l <= r },
+		'>':  function( l, r ) { return l > r },
+		'<':  function( l, r ) { return l < r }
+	};
+	function _expression( input, output, branch ) {
+		switch( branch.name ) {
+			case 'binary':
+				_binary(input, output, branch);
+				break;
+			case 'collect':
+				var col = [];
+				_expression(input, col, branch.children[0]);
+				output.push(col);
+				break;
+			case 'comma':
+				for( var i=0; i<branch.children.length; i++ ) {
+					_expression(input, output, branch.children[i]);
+				}
+				break;
+			case 'filter':
+				_filter(input, output, branch.children);
+				break;
+			case 'number':
+			case 'string':
+				output.push(branch.value);
+				break;
+			case 'parens':
+				_expression(input, output, branch.children[0]);
+				break;
+			case 'pipe':
+				input = _expression(input, output, branch.children[0]);
+				input = input.splice(0,input.length);
+				_expression(input, output, branch.children[1]);
+				break;
+		}
+		return output;
+	}
+	function _filter( input, output, filter ) {
+		var child, i, key, result;
+		
+		if( !filter.length )
+			return output.push(input);
+		
+		filter = filter.slice(0);
+		child = filter.shift();
+		if( input instanceof Array ) {
+			if( child.name == 'key_all' ) {
+				for( i=0; i<input.length; i++ )
+					_filter(input[i], output, filter);
+			} else if( child.name == 'key_num' ) {
+				_filter(input[child.value] != void(0) ? input[child.value] : null, output, filter);
+			}
+		} else if( input instanceof Object ) {
+			if( child.name == 'key_all' ) {
+				for( key in input )
+					_filter(input[key], output, filter);
+			} else {
+				_filter(child.value in input ? input[child.value] : null, output, filter);
+			}
+		} else {
+			return;
+		}
+	}
+	
 	// Public jsq() function
 	var jsq = function( data, query, callback, context ) {
 		var parser = new Parser(query);
 		parser.parse();
 		
-		return parser;
+		var output = [];
+		return run(data, output, parser.tree);
 	};
 	jsq['Lexer'] = Lexer;
 	jsq['Parser'] = Parser;
