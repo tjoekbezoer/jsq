@@ -16,36 +16,37 @@
 				outline: none;
 			}
 			
-			span {
+			#lexer span,
+			#parser span {
 				border: 1px solid #000;
 				font-family: 'Courier New';
 				font-size: 12px;
 				padding: 1px 2px;
 			}
-			span.op_uny,
-			span.op_arm,
-			span.op_cmp,
-			span.ctl {
+			#lexer span.op_uny,
+			#lexer span.op_arm,
+			#lexer span.op_cmp,
+			#lexer span.ctl {
 				background-color: deepskyblue;
 			}
-			span.vrb {
+			#lexer span.vrb {
 				background-color: orchid;
 			}
-			span.id {
+			#lexer span.id {
 				background-color: yellow;
 			}
-			span.itg,
-			span.flt {
+			#lexer span.itg,
+			#lexer span.flt {
 				background-color: orangered;
 			}
-			span.str {
+			#lexer span.str {
 				background-color: orange;
 			}
-			span.wsp,
-			span.eof {
+			#lexer span.wsp,
+			#lexer span.eof {
 				background-color: mistyrose;
 			}
-			span.error {
+			#parser span.error {
 				background-color: lightpink;
 				border: 1px solid firebrick;
 				color: firebrick;
@@ -95,6 +96,38 @@
 					#parser .block .block {
 						margin: 5px;
 					}
+			#split {
+				overflow: hidden;
+				margin: 10px -8px;
+			}
+				#split > div {
+					box-sizing: border-box;
+					padding: 0px 10px;
+				}
+				#input,
+				#output {
+					border: 1px solid black;
+					width: 100%;
+					height: 500px;
+					margin: 0;
+					padding: 0;
+				}
+				#input {
+					position: relative !important;
+				}
+				#output {
+					/*white-space: pre-line;*/
+					overflow: auto;
+				}
+				#inputContainer {
+					float: left;
+					overflow: hidden;
+					width: 50%;
+				}
+				#outputContainer {
+					float: left;
+					width: 50%;
+				}
 		</style>
 	</head>
 	<body>
@@ -104,7 +137,42 @@
 		<div id="parser">
 			<div class="block"></div>
 		</div>
+		<div id="split">
+			<div>
+				<select id="bookmarks"></select>
+			</div>
+			<div id="inputContainer">
+				<div id="input"></div>
+			</div>
+			<div id="outputContainer">
+				<pre id="output"></pre>
+			</div>
+		</div>
 		
+		<div style="display: none;" id="bookmarkData">
+<div data-name="Simple">{
+	"first": 1,
+	"second": 2,
+	"third": 3
+}</div>
+<div data-name="Multiple">[
+	{
+		"first": 1,
+		"second": 2,
+		"third": 3
+	}, {
+		"first": 4,
+		"second": 5
+	}
+]</div>
+		</div>
+		
+		<script src="ace/src-min-noconflict/ace.js"></script>
+		<script>
+		    var editor = ace.edit("input");
+		    editor.getSession().setMode("ace/mode/json");
+		    editor.setShowPrintMargin(false);
+		</script>
 		
 		<script type="text/javascript" src="zepto.js"></script>
 		<script type="text/javascript" src="jsq.js"></script>
@@ -114,6 +182,19 @@
 				// Global parser object, is assigned in keyup event
 				parser;
 			
+			// Bring bookmarks to life
+			var _bookmarks = [];
+			$('#bookmarkData > div').each(function( i, item ) {
+				_bookmarks.push(item.innerHTML);
+				$('#bookmarks').append('<option value='+i+'>'+item.getAttribute('data-name')+'</option>');
+			});
+			$('#bookmarks').on('change', function() {
+				editor.getSession().setValue( _bookmarks[this.value] );
+				input.onkeyup({target:input}, true);
+			});
+			editor.getSession().setValue(_bookmarks[0]);
+			
+			// Get reference to element used to display parser blocks
 			var blockEl = $('.block');
 			blockEl.remove();
 			
@@ -124,15 +205,11 @@
 			});
 			
 			input.focus();
-			input.onkeyup = function( event ) {
-				if( event.keyCode == 13 ) {
-					if( parser ) {
-						debug(parser.tree);
-						debug(JSON.stringify(parser.toJSON()));
-						return;
-					}
-				} else if( event.keyCode == 27 ) {
+			input.onkeyup = function( event, force ) {
+				if( event.keyCode == 27 ) {
 					input.value = '';
+				} else if( event.keyCode != 13 && !force) {
+					return;
 				}
 				
 				document.location.hash = input.value;
@@ -190,11 +267,24 @@
 				} catch(e) {
 					$('#parser').html('<span class=error>'+e.toString()+'</span>');
 				}
+				
+				// Query
+				try {
+					window.output = jsq(
+						//JSON.parse($('#input').val()),
+						JSON.parse(editor.getSession().getValue() || null),
+						query
+					);
+					$('#output').html(JSON.stringify(output));
+				} catch(e) {
+					if( e.message )
+						throw e;
+				}
 			};
 			if( !input.value ) {
 				input.value = document.location.hash.substr(1);
 			}
-			input.onkeyup({target:input});
+			input.onkeyup({target:input}, true);
 			
 			function _type( typeId ) {
 				for( type in jsq.Lexer.tokenTypes ) {
@@ -202,10 +292,6 @@
 						return type;
 				}
 				return null;
-			}
-			
-			function debug() {
-				console.log.apply(console, arguments);
 			}
 		</script>
 	</body>
