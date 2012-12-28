@@ -1,4 +1,4 @@
 jsq
 ===
 
-Query JSON in UNIX syntax
+Work in progress. More info later!
