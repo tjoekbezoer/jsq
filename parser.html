@@ -53,7 +53,7 @@
 			}
 			
 			#lexer {
-				margin-bottom: 10px;
+				margin-bottom: 20px;
 			}
 			#parser {
 				font-family: Helvetica, sans-serif;
@@ -84,14 +84,17 @@
 						margin: 0px;
 						padding: 2px 5px;
 					}
-					#parser .block p {
+					#parser .block p,
+					#parser .block span {
 						background-color: lightgray;
 						border: 1px solid blue;
-						float: left;
 						font-size: 14px;
 						font-weight: bold;
 						margin: 2px 5px;
 						padding: 1px 2px;
+					}
+					#parser .block p {
+						float: left;
 					}
 					#parser .block .block {
 						margin: 5px;
@@ -103,6 +106,12 @@
 				#split > div {
 					box-sizing: border-box;
 					padding: 0px 10px;
+				}
+				div.bar {
+					font-size: 12px;
+					font-family: Helvetica;
+					height: 25px;
+					text-align: right;
 				}
 				#input,
 				#output {
@@ -138,24 +147,26 @@
 			<div class="block"></div>
 		</div>
 		<div id="split">
-			<div>
-				<select id="bookmarks"></select>
-			</div>
 			<div id="inputContainer">
+				<div class="bar">
+					Bookmarks: <select id="bookmarks"></select>
+				</div>
 				<div id="input"></div>
 			</div>
 			<div id="outputContainer">
+				<div class="bar"></div>
 				<pre id="output"></pre>
 			</div>
 		</div>
 		
 		<div style="display: none;" id="bookmarkData">
-<div data-name="Simple">{
+<div data-name="Simple Object">{
 	"first": 1,
 	"second": 2,
-	"third": 3
+	"third": 3,
+	"fourth": [1,2,3,4,5,6,7,8]
 }</div>
-<div data-name="Multiple">[
+<div data-name="Multiple Object">[
 	{
 		"first": 1,
 		"second": 2,
@@ -165,6 +176,7 @@
 		"second": 5
 	}
 ]</div>
+<div data-name="Simple Array">[1,2,3,4,5,6]</div>
 		</div>
 		
 		<script src="ace/src-min-noconflict/ace.js"></script>
@@ -179,6 +191,7 @@
 		<script type="text/javascript">
 			var input = document.getElementById('query'),
 				lexer = document.getElementById('lexer'),
+				bookmarks = $('#bookmarks'),
 				// Global parser object, is assigned in keyup event
 				parser;
 			
@@ -186,9 +199,9 @@
 			var _bookmarks = [];
 			$('#bookmarkData > div').each(function( i, item ) {
 				_bookmarks.push(item.innerHTML);
-				$('#bookmarks').append('<option value='+i+'>'+item.getAttribute('data-name')+'</option>');
+				bookmarks.append('<option value='+i+'>'+item.getAttribute('data-name')+'</option>');
 			});
-			$('#bookmarks').on('change', function() {
+			bookmarks.on('change', function() {
 				editor.getSession().setValue( _bookmarks[this.value] );
 				input.onkeyup({target:input}, true);
 			});
@@ -212,7 +225,7 @@
 					return;
 				}
 				
-				document.location.hash = input.value;
+				_updateHash();
 				lexer.innerHTML = '';
 				
 				try {
@@ -247,6 +260,10 @@
 						current = b;
 						
 						if( branch.children.length ) {
+							b.append(branch.value != null ?
+								'<span>'+branch.value+'</span>':
+								''
+							);
 							for(
 								var i=0, c=branch.children, l=c.length, e;
 								i<l && (e=c[i]);
@@ -255,7 +272,7 @@
 								b.append(arguments.callee(e));
 							}
 						} else {
-							b.append(branch.value ?
+							b.append(branch.value != null ?
 								'<p>'+branch.value+'</p>':
 								''
 							);
@@ -270,8 +287,8 @@
 				
 				// Query
 				try {
+					$('#output').empty();
 					window.output = jsq(
-						//JSON.parse($('#input').val()),
 						JSON.parse(editor.getSession().getValue() || null),
 						query
 					);
@@ -281,10 +298,17 @@
 						throw e;
 				}
 			};
-			if( !input.value ) {
-				input.value = document.location.hash.substr(1);
+			
+			// Auto-set input field and bookmarks dropdown
+			var hash = document.location.hash.substr(1).split('&');
+			if( hash.length > 1 ) {
+				bookmarks.val(hash.shift());
+				bookmarks.trigger('change');
+				input.value = hash.join('&');
 			}
 			input.onkeyup({target:input}, true);
+			
+			
 			
 			function _type( typeId ) {
 				for( type in jsq.Lexer.tokenTypes ) {
@@ -293,6 +317,10 @@
 				}
 				return null;
 			}
+			function _updateHash() {
+				document.location.hash = bookmarks.val() +'&'+ input.value;
+			}
+			
 		</script>
 	</body>
 </html>
