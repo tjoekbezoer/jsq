@@ -1,45 +1,6 @@
 
 
 (function( _exports ) {
-	var _regex = new RegExp(
-		[
-			// (1) unary operator
-			'([+]{2}|[-]{2})|',
-			// (2) binary operator
-			'([-+*/])|',
-			// (3) comparison operator
-			'((?:&&)|(?:\\|\\|)|(?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
-			// (4) control character
-			'([\\.,:|\\[\\]\\(\\){}])|',
-			// (5) variable
-			'(\\$[a-z_][a-z0-9_]*)|',
-			// (6) identifier
-			'([a-z_][a-z0-9_]*)|',
-			// (7) float
-			'(\\d+\\.\\d+)|',
-			// (8) integer
-			'(\\d+)|',
-			// (9) string. TODO: faster?
-			'("(?:\\\\.|[^"])*")|',
-			// (10) white space
-			'(\\s+)'
-		].join(''),
-		'gi'
-	);
-	// The elements in _t correlate to the _regexp subpatterns.
-	var _t = {
-		op_uny: 1,
-		op_arm: 2,
-		op_cmp: 3,
-		ctl: 4,
-		vrb: 5,
-		id: 6,
-		flt: 7,
-		itg: 8,
-		str: 9,
-		wsp: 10
-	};
-	
 	// Extend target object with the properties from the given source objects.
 	function _extend( target /*[, source]...*/ ) {
 		var args = Array.prototype.slice.call(arguments, 1);
@@ -92,6 +53,45 @@
 		
 		return target;
 	}
+	
+	var _regex = new RegExp(
+		[
+			// (1) unary operator
+			'([+]{2}|[-]{2})|',
+			// (2) binary operator
+			'([-+*/])|',
+			// (3) comparison operator
+			'((?:&&)|(?:\\|\\|)|(?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
+			// (4) control character
+			'([\\.,:|\\[\\]\\(\\){}])|',
+			// (5) variable
+			'(\\$[a-z_][a-z0-9_]*)|',
+			// (6) identifier
+			'([a-z_][a-z0-9_]*)|',
+			// (7) float
+			'(\\d+\\.\\d+)|',
+			// (8) integer
+			'(\\d+)|',
+			// (9) string. TODO: faster?
+			'("(?:\\\\.|[^"])*")|',
+			// (10) white space
+			'(\\s+)'
+		].join(''),
+		'gi'
+	);
+	// The elements in _t correlate to the _regexp subpatterns.
+	var _t = {
+		op_uny: 1,
+		op_arm: 2,
+		op_cmp: 3,
+		ctl: 4,
+		vrb: 5,
+		id: 6,
+		flt: 7,
+		itg: 8,
+		str: 9,
+		wsp: 10
+	};
 	
 	// TODO: Optimize throw mechanism. Group error strings here?
 	//function _error( msg )
@@ -186,6 +186,18 @@
 		this.up();
 		return ret;
 	};
+	Parser.prototype.parse_parens = function() {
+		var token;
+		
+		this.add('parens');
+		while(
+			(token = this.tokens.skip(true)) &&
+			token.data != ')'
+		) {
+			this.parse();
+		}
+		this.up();
+	};
 	// parse() is the root parse method.
 	Parser.prototype.parse = function() {
 		var branchId = this.current.id,
@@ -197,24 +209,16 @@
 					this.parse_filter();
 					break;
 				case '(':
-					this.add('parens');
-					this.tokens.next();
-					this.parse();
+					this.parse_parens();
 					break;
-				case ')':
-					if( this.current.name != 'parens' )
+				/*case ')':
+					if( this.current.name != 'parens' ) {
 						throw 'jsq_parse: Unexpected ) at position '+token.index;
+					}
 					this.up();
-					break;
+					break;*/
 				case '[':
-					this.add('collect');
-					this.tokens.next();
-					this.parse();
-					break;
-				case ']':
-					if( this.current.name != 'collect' )
-						throw 'jsq_parse: Unexpected ] at position '+token.index;
-					this.up();
+					this.parse_collection();
 					break;
 				case ',':
 					this.parse_comma();
@@ -234,7 +238,7 @@
 						case _t.flt:
 						case _t.itg:
 						case _t.str:
-							this.parse_filter();
+							this.parse_literal();
 							break;
 						case _t.wsp:
 							this.tokens.next();
@@ -264,7 +268,7 @@
 	Parser.prototype.parse_binary = function( lhs ) {
 		var token = this.tokens.current(),
 			lhs = lhs || this.current.last,
-			op;
+			prev, op;
 		
 		if(
 			lhs && (
@@ -272,13 +276,21 @@
 				// The left hand side is a binary, so it has 3 children:
 				// a lhs, an operator and a rhs. Perform an action based on
 				// its operator.
-				lhs.name == 'binary' && (
+				lhs.name == 'binary' &&
+				(prev = lhs.children[1]) && (
 					(
-						lhs.children[1].type == _t.op_cmp &&
+						token.data == '&&' &&
+						prev.value == '||'
+					) || (
+						token.type == _t.op_cmp &&
+						token.data != '&&' &&
 						token.data != '||'
 					) || (
+						prev.type == _t.op_cmp &&
+						token.type == _t.op_arm
+					) || (
 						(token.data == '*' || token.data == '/') &&
-						(lhs.children[1].value == '+' || lhs.children[1].value == '-')
+						(prev.value == '+' || prev.value == '-')
 					)
 				)
 			)
@@ -286,8 +298,6 @@
 			this.current = lhs;
 			this.parse_binary(lhs.last);
 			this.up();
-			
-			return;
 		} else if( lhs ) {
 			this.wrap('binary');
 			op = this.addup('operator');
@@ -301,6 +311,24 @@
 			throw 'jsq_parse_binary: Unexpected '+this.tokens.current().data+' at position '+this.tokens.current().index;
 		}
 	};
+	// 
+	Parser.prototype.parse_collection = function() {
+		var token;
+		
+		this.add('collect');
+		while(
+			(token = this.tokens.peek(true)) &&
+			token.data != ']'
+		) {
+			this.tokens.skip(true);
+			this.parse();
+		}
+		
+		if( !token )
+			throw 'jsq_parse_collection: Unexpected EOF';
+		this.tokens.next();
+		this.up();
+	};
 	// Creates a comma separated list of expressions. These lists cannot
 	// be nested. Lists can be nested inside parenthesis and square/curly brackets.
 	Parser.prototype.parse_comma = function() {
@@ -309,11 +337,11 @@
 			peek;
 		
 		// Is this comma nested?
-		while( cur ) {
+		/*while( cur ) {
 			if( cur.name == 'comma' )
 				throw 'jsq_parse_comma: Unexpected , at position '+this.tokens.current().index;
 			cur = cur.parent;
-		}
+		}*/
 		
 		if( len && (cur = this.current.children[len-1]).name == 'comma' ) {
 			this.current = cur;
@@ -336,27 +364,6 @@
 		}
 		this.up();
 	};
-	Parser.prototype.parse_id = function() {
-		var token = this.tokens.current();
-		
-		this.add('function_call').value = token.data;
-		this.up();
-	};
-	// Pipes should take precedence over every other operator
-	Parser.prototype.parse_pipe = function() {
-		var peek;
-		
-		this.wrap('pipe');
-		
-		while(
-			(peek = this.tokens.peek(true)) &&
-			peek.data != '|'
-		) {
-			this.tokens.skip(true);
-			this.parse();
-		}
-		this.up();
-	};
 	// Parses a literal, or an object filter
 	// Filter examples:
 	//   .
@@ -368,88 +375,116 @@
 	//   .[foo][][4]
 	//   etc.
 	Parser.prototype.parse_filter = function() {
-		var token, literal, peek,
-			current, parent;
+		var all = true,
+			peek, token;
 		
 		// TODO:
 		// Two filters next to eachother without comma, pipe etc. should throw.
-		
-		// Is this a literal?
-		token = this.tokens.current();
-		if(
-			token && (
-				token.type == _t.flt ||
-				token.type == _t.itg ||
-				token.type == _t.str
-			)
-		) {
-			if( token.type == _t.str ) {
-				current = this.add('string');
-				current.value = token.data;
-			} else {
-				current = this.add('number');
-				current.value = parseFloat(token.data);
-			}
-			
-			this.up();
-			parent = this.current;
-			
-			literal = true;
-		} else {
-			current = this.add('filter');
-			parent = current.parent;
-		}
+		this.add('filter');
 		
 		while(
 			(peek = this.tokens.peek()) &&
-			peek.type != _t.wsp &&
-			peek.type != _t.op_arm &&
-			peek.type != _t.op_cmp &&
-			peek.data != ')' &&
-			peek.data != '}' &&
-			peek.data != ']' &&
-			peek.data != '|' &&
-			peek.data != ','
+			peek.data == '['
 		) {
-			token = this.tokens.next();
-			// If this filter follows a literal, throw
-			if( !literal && token.data == '[' ) {
-				token = this.tokens.next();
-				if(
-					token && (
-						token.type == _t.vrb ||
-						//token.type == _t.id  ||
-						token.type == _t.itg ||
-						token.type == _t.str
-					)
-				) {
-					this.add( token.type == _t.itg ?
-						'key_num' :
-						'key_name'
-					).value = token.data;
-					this.up();
-					
-					token = this.tokens.next();
-					if( token && token.data == ']' )
-						continue;
-				} else if(
-					token &&
-					token.data == ']'
-				) {
-					this.add('key_all').value = '.';
-					this.up();
-					continue;
-				}
+			all = true;
+			this.tokens.next();
+			while(
+				(peek = this.tokens.peek(true)) &&
+				peek.data != ']'
+			) {
+				this.tokens.skip(true);
+				this.parse();
+				all = false;
 			}
 			
-			if( token )
-				throw 'jsq_parse_filter: Unexpected \''+token.data+'\' at position '+token.index;
-			else
-				throw 'jsq_parse_filter: Unexpected EOF';
+			if( all ) {
+				this.addup('key_all');
+				all = false;
+			}
+			
+			if(
+				!(token = this.tokens.next()) ||
+				token.data != ']'
+			) {
+				throw token ?
+					'jsq_parse_filter: Unexpected '+token.data+' at position '+token.index :
+					'jsq_parse_filter: Unexpected EOF';
+			}
 		}
 		
-		if( this.current.name == 'filter' )
+		if( all ) {
 			this.up();
+		} else {
+			if( !this.tokens.current() )
+				throw 'jsq_parse_filter: Unexpected EOF';
+			this.up();
+		}
+	};
+	// Since no variables exist yet it's only possible to parse this as
+	// a function call.
+	Parser.prototype.parse_id = function() {
+		var peek, token;
+		
+		this.add('function_call').value = this.tokens.current().data;
+		
+		if(
+			(peek = this.tokens.peek(true)) &&
+			peek.data == '('
+		) {
+			this.tokens.skip(true);
+			
+			if(
+				(peek = this.tokens.peek(true)) &&
+				peek.data != ')'
+			) {
+				this.add('argument');
+				while(
+					(token = this.tokens.next()) &&
+					token.data != ')'
+				) {
+					this.parse();
+				}
+				this.up();
+				
+				if(
+					!(token = this.tokens.current()) ||
+					token.data != ')'
+				) {
+					throw token ?
+						'jsq_parse_id: Unexpected '+token.data+' at position '+token.index :
+						'jsq_parse_id: Unexpected EOF';
+				}
+			} else {
+				this.tokens.skip(true);
+			}
+		}
+		
+		this.up();
+	};
+	Parser.prototype.parse_literal = function() {
+		var token = this.tokens.current();
+		if( token.type == _t.str ) {
+			this.add('string').value = token.data;
+		} else {
+			this.add('number').value = parseFloat(token.data);
+		}
+		
+		this.up();
+	};
+	// Pipes should take precedence over every other operator
+	Parser.prototype.parse_pipe = function() {
+		var peek;
+		
+		this.wrap('pipe');
+		
+		// while(
+		// 	(peek = this.tokens.peek(true)) &&
+		// 	peek.data != '|'
+		// ) {
+			this.tokens.skip(true);
+			this.parse();
+		//}
+		this.up();
 	};
 	Parser.prototype.toJSON = function( branch ) {
 		var ret = {},
@@ -581,7 +616,7 @@
 				break;
 			case 'collect':
 				var col = [];
-				_expression(input, col, branch.children[0]);
+				branch.children.length && _expression(input, col, branch.children[0]);
 				output.push(col);
 				break;
 			case 'comma':
@@ -592,12 +627,16 @@
 			case 'filter':
 				_filter(input, output, branch.children);
 				break;
+			case 'function_call':
+				_function(input, output, branch);
+				break;
 			case 'number':
 			case 'string':
 				output.push(branch.value);
 				break;
 			case 'parens':
-				_expression(input, output, branch.children[0]);
+				var result = _expression(input, [], branch.children[0]);
+				output.push.apply(output, result);
 				break;
 			case 'pipe':
 				input = _expression(input, output, branch.children[0]);
@@ -610,27 +649,60 @@
 	function _filter( input, output, filter ) {
 		var child, i, key, result;
 		
+		// End of the chain, or filter is a single '.'
 		if( !filter.length )
-			return output.push(input);
+			return output.push(input != void(0) ? input : null);
 		
 		filter = filter.slice(0);
 		child = filter.shift();
 		if( input instanceof Array ) {
 			if( child.name == 'key_all' ) {
+				// All array elements
 				for( i=0; i<input.length; i++ )
 					_filter(input[i], output, filter);
-			} else if( child.name == 'key_num' ) {
-				_filter(input[child.value] != void(0) ? input[child.value] : null, output, filter);
+			} else if( child.name == 'number' ) {
+				// Single array element
+				_filter(input[child.value], output, filter);
+			} else if(
+				child.name == 'binary' &&
+				child.children[1].value == '-' &&
+				child.children[0].value >= 0 &&
+				child.children[2].value >= child.children[0].value
+			) {
+				// TODO: Maybe integrate into Parser to allow more complexity? parse_range()?
+				// 
+				// Iterate range
+				var max = child.children[2].value;
+				if( max > input.length-1 )
+					max = input.length-1;
+				for( i=child.children[0].value; i<=max; i++ ) {
+					_filter(input[i], output, filter);
+				}
+			} else if ( child.name != 'string' ) {
+				// Every other case: sub-expression
+				var sub = _expression(input, [], child);
+				for( i=0; i<sub.length; i++ )
+					_filter(input[sub[i]], output, filter);
 			}
 		} else if( input instanceof Object ) {
 			if( child.name == 'key_all' ) {
+				// All object properties
 				for( key in input )
 					_filter(input[key], output, filter);
+			} else if( child.name == 'number' || child.name == 'string' ) {
+				// Single object property
+				_filter(input[child.value], output, filter);
 			} else {
-				_filter(child.value in input ? input[child.value] : null, output, filter);
+				// Sub-expression
+				var sub = _expression(input, [], child);
+				for( i=0; i<sub.length; i++ )
+					_filter(input[sub[i]], output, filter);
 			}
-		} else {
-			return;
+		}
+	}
+	function _function( input, output, branch ) {
+		if( branch.value && typeof jsq[branch.value] == 'function' ) {
+			jsq[branch.value](input, output, branch.children[0] && branch.children[0].children[0]);
 		}
 	}
 	
@@ -644,6 +716,39 @@
 	};
 	jsq['Lexer'] = Lexer;
 	jsq['Parser'] = Parser;
+	
+	// Modules
+	jsq['avg'] = function( input, output ) {
+		var ret = 0, length = 0, i;
+		for( i=0; i<input.length; i++ )
+			_avg(input[i]);
+		output.push(ret/length);
+		
+		function _avg( input ) {
+			if( input instanceof Array ) {
+				for( var i=0; i<input.length; i++ )
+					_avg(input[i]);
+			} else {
+				ret += input;
+				length++;
+			}
+		}
+	};
+	jsq['select'] = function( input, output, argument ) {
+		var i, result;
+		for( i=0; i<input.length; i++ ) {
+			result = _expression(input[i], [], argument);
+			if( result.length == 1 && result[0] )
+				output.push(input[i]);
+		}
+	};
+	jsq['sum'] = function( input, output ) {
+		var ret = 0, i;
+		for( i=0; i<input.length; i++ )
+			ret += input[i] instanceof Array ? jsq.sum(input[i]) : input[i];
+		
+		return output && output.push(ret) || ret;
+	};
 	
 	_exports['jsq'] = jsq;
 })(typeof exports=='undefined'?window:exports);
