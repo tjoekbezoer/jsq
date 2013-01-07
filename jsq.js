@@ -211,12 +211,6 @@
 				case '(':
 					this.parse_parens();
 					break;
-				/*case ')':
-					if( this.current.name != 'parens' ) {
-						throw 'jsq_parse: Unexpected ) at position '+token.index;
-					}
-					this.up();
-					break;*/
 				case '[':
 					this.parse_collection();
 					break;
@@ -382,16 +376,10 @@
 		// Two filters next to eachother without comma, pipe etc. should throw.
 		this.add('filter');
 		
-		while(
-			(peek = this.tokens.peek()) &&
-			peek.data == '['
-		) {
+		while( (peek = this.tokens.peek()) && peek.data == '[' ) {
 			all = true;
 			this.tokens.next();
-			while(
-				(peek = this.tokens.peek(true)) &&
-				peek.data != ']'
-			) {
+			while( (peek = this.tokens.peek(true)) && peek.data != ']' ) {
 				this.tokens.skip(true);
 				this.parse();
 				all = false;
@@ -402,10 +390,7 @@
 				all = false;
 			}
 			
-			if(
-				!(token = this.tokens.next()) ||
-				token.data != ']'
-			) {
+			if( !(token = this.tokens.next()) || token.data != ']' ) {
 				throw token ?
 					'jsq_parse_filter: Unexpected '+token.data+' at position '+token.index :
 					'jsq_parse_filter: Unexpected EOF';
@@ -427,29 +412,17 @@
 		
 		this.add('function_call').value = this.tokens.current().data;
 		
-		if(
-			(peek = this.tokens.peek(true)) &&
-			peek.data == '('
-		) {
+		if( (peek = this.tokens.peek(true)) && peek.data == '(' ) {
 			this.tokens.skip(true);
 			
-			if(
-				(peek = this.tokens.peek(true)) &&
-				peek.data != ')'
-			) {
+			if( (peek = this.tokens.peek(true)) && peek.data != ')' ) {
 				this.add('argument');
-				while(
-					(token = this.tokens.next()) &&
-					token.data != ')'
-				) {
+				while( (token = this.tokens.next()) && token.data != ')' ) {
 					this.parse();
 				}
 				this.up();
 				
-				if(
-					!(token = this.tokens.current()) ||
-					token.data != ')'
-				) {
+				if( !(token = this.tokens.current()) || token.data != ')' ) {
 					throw token ?
 						'jsq_parse_id: Unexpected '+token.data+' at position '+token.index :
 						'jsq_parse_id: Unexpected EOF';
@@ -566,19 +539,7 @@
 				switch( op ) {
 					// Perform arithmetic operation on values
 					case '+':
-						if( !(l[i] instanceof Object || r[j] instanceof Object) )
-							ret = l[i] + r[j];
-						else if( l[i] instanceof Array || r[j] instanceof Array )
-							ret = _concat(l[i], r[j]);
-						else if( l[i] instanceof Object && r[j] instanceof Object )
-							ret = _extend({}, l[i], r[j]);
-						break;
 					case '-':
-						if( l[i] instanceof Object || r[j] instanceof Object )
-							ret = _without(l[i], r[j]);
-						else
-							ret = l[i] - r[j];
-						break;
 					case '*':
 					case '/':
 					case '&&':
@@ -598,6 +559,20 @@
 		}
 	}
 	_binary.op = {
+		'+':  function( l, r ) {
+			if( !(l instanceof Object || r instanceof Object) )
+				return l + r;
+			else if( l instanceof Array || r instanceof Array )
+				return _concat(l, r);
+			else if( l instanceof Object && r instanceof Object )
+				return _extend({}, l, r);
+		},
+		'-':  function( l, r ) {
+			if( l instanceof Object || r instanceof Object )
+				return _without(l, r);
+			else
+				return l - r;
+		},
 		'*':  function( l, r ) { return l * r },
 		'/':  function( l, r ) { return l / r },
 		'&&': function( l, r ) { return l && r },
