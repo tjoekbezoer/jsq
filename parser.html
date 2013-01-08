@@ -111,6 +111,7 @@
 					font-size: 12px;
 					font-family: Helvetica;
 					height: 25px;
+					line-height: 25px;
 					text-align: right;
 				}
 				#input,
@@ -125,7 +126,8 @@
 					position: relative !important;
 				}
 				#output {
-					/*white-space: pre-line;*/
+					font-family: Monaco, Menlo, 'Ubuntu Mono', Consolas, source-code-pro, monospace;
+					font-size: 12px;
 					overflow: auto;
 				}
 				#inputContainer {
@@ -154,8 +156,10 @@
 				<div id="input"></div>
 			</div>
 			<div id="outputContainer">
-				<div class="bar"></div>
-				<pre id="output"></pre>
+				<div class="bar">
+					<span id="timer"></span> milliseconds
+				</div>
+				<div id="output"></div>
 			</div>
 		</div>
 		
@@ -288,10 +292,11 @@
 				// Query
 				try {
 					$('#output').empty();
-					window.output = jsq(
-						JSON.parse(editor.getSession().getValue() || null),
-						query
-					);
+					var data = JSON.parse(editor.getSession().getValue() || null),
+						start = window.performance && performance.now() || +new Date;
+					window.output = jsq(data, query);
+					var end = window.performance && performance.now() || +new Date;
+					$('#timer').html((end-start).toFixed(3));
 					$('#output').html(JSON.stringify(output));
 				} catch(e) {
 					if( e.message )
