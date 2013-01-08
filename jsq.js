@@ -3,10 +3,11 @@
 (function( _exports ) {
 	// Extend target object with the properties from the given source objects.
 	function _extend( target /*[, source]...*/ ) {
-		var args = Array.prototype.slice.call(arguments, 1);
-		for( var i=0; i<args.length; i++ ) {
-			for( var key in args[i] ) {
-				target[key] = args[i][key];
+		for( var i=1; i<arguments.length; i++ ) {
+			if( arguments[i] instanceof Object ) {
+				for( var key in arguments[i] ) {
+					target[key] = arguments[i][key];
+				}
 			}
 		}
 		return target;
@@ -169,6 +170,7 @@
 			d = {
 				id: this.id++,
 				name: name,
+				// value: null,
 				parent: this.current,
 				index: 0,
 				children: [],
@@ -186,18 +188,6 @@
 		this.up();
 		return ret;
 	};
-	Parser.prototype.parse_parens = function() {
-		var token;
-		
-		this.add('parens');
-		while(
-			(token = this.tokens.skip(true)) &&
-			token.data != ')'
-		) {
-			this.parse();
-		}
-		this.up();
-	};
 	// parse() is the root parse method.
 	Parser.prototype.parse = function() {
 		var branchId = this.current.id,
@@ -214,6 +204,9 @@
 				case '[':
 					this.parse_collection();
 					break;
+				case '{':
+					this.parse_object();
+					break;
 				case ',':
 					this.parse_comma();
 					break;
@@ -227,7 +220,7 @@
 							this.parse_binary();
 							break;
 						case _t.id:
-							this.parse_id();
+							this.parse_function();
 							break;
 						case _t.flt:
 						case _t.itg:
@@ -390,7 +383,7 @@
 				all = false;
 			}
 			
-			if( !(token = this.tokens.next()) || token.data != ']' ) {
+			if( !(token = this.tokens.skip(true)) || token.data != ']' ) {
 				throw token ?
 					'jsq_parse_filter: Unexpected '+token.data+' at position '+token.index :
 					'jsq_parse_filter: Unexpected EOF';
@@ -405,9 +398,8 @@
 			this.up();
 		}
 	};
-	// Since no variables exist yet it's only possible to parse this as
-	// a function call.
-	Parser.prototype.parse_id = function() {
+	// Parse a function call
+	Parser.prototype.parse_function = function() {
 		var peek, token;
 		
 		this.add('function_call').value = this.tokens.current().data;
@@ -417,15 +409,15 @@
 			
 			if( (peek = this.tokens.peek(true)) && peek.data != ')' ) {
 				this.add('argument');
-				while( (token = this.tokens.next()) && token.data != ')' ) {
+				while( (token = this.tokens.skip(true)) && token.data != ')' ) {
 					this.parse();
 				}
 				this.up();
 				
 				if( !(token = this.tokens.current()) || token.data != ')' ) {
 					throw token ?
-						'jsq_parse_id: Unexpected '+token.data+' at position '+token.index :
-						'jsq_parse_id: Unexpected EOF';
+						'jsq_parse_function: Unexpected '+token.data+' at position '+token.index :
+						'jsq_parse_function: Unexpected EOF';
 				}
 			} else {
 				this.tokens.skip(true);
@@ -434,6 +426,8 @@
 		
 		this.up();
 	};
+	// Parse string and numbers
+	// TODO: booleans?
 	Parser.prototype.parse_literal = function() {
 		var token = this.tokens.current();
 		if( token.type == _t.str ) {
@@ -444,7 +438,92 @@
 		
 		this.up();
 	};
-	// Pipes should take precedence over every other operator
+	// Parse object definitions
+	Parser.prototype.parse_object = function() {
+		var error = false,
+			token, peek, key, value;
+		
+		this.add('object');
+		while( (token = this.tokens.skip(true)) && token.data != '}' ) {
+			key_switch:
+			switch( token.type ) {
+				case _t.id:
+				case _t.itg:
+				case _t.str:
+				case _t.ctl:
+					if( token.type == _t.ctl && token.data == ',' ) {
+						// Comma found. Look for another element, or throw when there is none
+						// or this is a double comma.
+						if( !this.current.children.length ) {
+							throw 'jsq_parse_object: Unexpected , at position '+token.index;
+						} else if(
+							(peek = this.tokens.peek(true)) &&
+							peek.type == _t.ctl && (peek.data == ',' || peek.data == '}')
+						) {
+							throw 'jsq_parse_object: Unexpected '+peek.data+' at position '+peek.index;
+						} else if( !peek ) {
+							throw 'jsq_parse_object: Unexpected EOF';
+						} else {
+							continue;
+						}
+					} else if( token.type != _t.ctl || token.data == '.' || token.data == '(' ) {
+						// Element is found. The key can be a literal, a filter, or a complex
+						// expression in parenthesis that returns one result
+						this.add('element');
+						if( token.type != _t.ctl ) {
+							this.addup('key').value = token.data;
+						} else {
+							this.add('key');
+							this.parse();
+							this.up();
+						}
+						
+						if( (peek = this.tokens.peek(true)) && peek.data == ':' ) {
+							// First skip the colon
+							this.tokens.skip(true);
+							token = this.tokens.skip(true);
+							switch( token.type ) {
+								case _t.itg:
+								case _t.str:
+								case _t.id:
+								case _t.ctl:
+									this.add('value');
+									if(
+										token.type != _t.ctl ||
+										token.data == '.' || token.data == '[' || token.data == '(' || token.data == '{'
+									) {
+										this.parse();
+									} else {
+										throw 'jsq_parse_object: Unexpected '+token.data+' at position '+token.index;
+									}
+									// Also up out of 'element'
+									this.up(2);
+									break key_switch;
+							}
+						} else if( token.type != _t.ctl && peek && (peek.data == ',' || peek.data == '}') ) {
+							// Shortcut filter
+							this.add('value');
+							this.add('filter');
+							this.addup('string').value = token.data;
+							// Also up out of 'element'
+							this.up(3);
+							break;
+						}
+					}
+				default:
+					throw 'jsq_parse_object: Unexpected '+(peek?peek:token).data+' at position '+(peek?peek:token).index;
+			}
+		}
+		this.up();
+	};
+	Parser.prototype.parse_parens = function() {
+		var token;
+		this.add('parens');
+		while( (token = this.tokens.skip(true)) && token.data != ')' )
+			this.parse();
+		this.up();
+	};
+	// 
 	Parser.prototype.parse_pipe = function() {
 		var peek;
 		
@@ -609,6 +688,9 @@
 			case 'string':
 				output.push(branch.value);
 				break;
+			case 'object':
+				_object(input, output, branch.children);
+				break;
 			case 'parens':
 				var result = _expression(input, [], branch.children[0]);
 				output.push.apply(output, result);
@@ -676,53 +758,119 @@
 		}
 	}
 	function _function( input, output, branch ) {
-		if( branch.value && typeof jsq[branch.value] == 'function' ) {
-			jsq[branch.value](input, output, branch.children[0] && branch.children[0].children[0]);
+		if( branch.value && typeof jsq['fn'][branch.value] == 'function' ) {
+			jsq['fn'][branch.value](input, output, branch.children[0] && branch.children[0].children[0]);
+		}
+	}
+	function _object( input, output, elements, result ) {
+		var i, el, key, exp;
+		// Only clone on nested call
+		elements = result ? elements.slice(0) : elements;
+		result = _extend({}, result);
+		
+		if( el = elements.shift() ) {
+			el = el.children;
+			// key
+			if( el[0].children.length ) {
+				exp = _expression(input, [], el[0].children[0]);
+				if( exp.length == 1 )
+					key = exp[0];
+				else
+					throw 'runtime_object: Key definition with multiple values';
+			} else {
+				key = el[0].value;
+			}
+			
+			// value
+			// If the expression returns multiple results, output that many objects.
+			// If multiple values return multiple results, perform a cross join.
+			exp = _expression(input, [], el[1].children[0]);
+			for( i=0; i<exp.length; i++ ) {
+				result[key] = exp[i];
+				_object(input, output, elements, result);
+			}
+		} else {
+			output.push(result);
 		}
 	}
 	
 	// Public jsq() function
-	var jsq = function( data, query, callback, context ) {
-		var parser = new Parser(query);
-		parser.parse();
+	// callback = function(value, index, outputArray)
+	var jsq = function( data, query, callback, ctx ) {
+		var parser = new Parser(query),
+			node, output, i;
 		
-		var output = [];
-		return run(data, output, parser.tree);
+		parser.parse();
+		if( node = parser.tree.children[0] ) {
+			output = _expression(data, [], node);
+			if( callback ) {
+				for( i=0; i<output.length; i++ ) {
+					if( callback.call(ctx||this, output[i], i, output) === false )
+						break;
+				}
+			}
+			return output;
+		} else {
+			return [];
+		}
 	};
 	jsq['Lexer'] = Lexer;
 	jsq['Parser'] = Parser;
 	
 	// Modules
-	jsq['avg'] = function( input, output ) {
-		var ret = 0, length = 0, i;
-		for( i=0; i<input.length; i++ )
-			_avg(input[i]);
-		output.push(ret/length);
-		
-		function _avg( input ) {
-			if( input instanceof Array ) {
-				for( var i=0; i<input.length; i++ )
-					_avg(input[i]);
-			} else {
-				ret += input;
-				length++;
+	jsq['fn'] = {
+		'avg': function( input, output ) {
+			var ret = 0, length = 0, i;
+			for( i=0; i<input.length; i++ )
+				_avg(input[i]);
+			output.push(ret/length);
+			
+			function _avg( input ) {
+				if( input instanceof Array ) {
+					for( var i=0; i<input.length; i++ )
+						_avg(input[i]);
+				} else {
+					ret += input;
+					length++;
+				}
 			}
+		},
+		'length': function( input, output ) {
+			var i, item, key, count;
+			for( i=0; i<input.length; i++ ) {
+				item = input[i];
+				if( item instanceof Array || typeof item == 'string' ) {
+					output.push(item.length);
+				} else if( item instanceof Object ) {
+					count = 0;
+					for( key in item )
+						count++;
+					output.push(count);
+				} else {
+					output.push(0);
+				}
+			}
+		},
+		'map': function( input, output, argument ) {
+			for( var i=0; i<input.length; i++ ) {
+				output.push(_expression(input[i], [], argument));
+			}
+		},
+		'select': function( input, output, argument ) {
+			var i, result;
+			for( i=0; i<input.length; i++ ) {
+				result = _expression(input[i], [], argument);
+				if( result.length == 1 && result[0] )
+					output.push(input[i]);
+			}
+		},
+		'sum': function( input, output ) {
+			var ret = 0, i;
+			for( i=0; i<input.length; i++ )
+				ret += input[i] instanceof Array ? arguments.callee(input[i]) : input[i];
+			
+			return output && output.push(ret) || ret;
 		}
-	};
-	jsq['select'] = function( input, output, argument ) {
-		var i, result;
-		for( i=0; i<input.length; i++ ) {
-			result = _expression(input[i], [], argument);
-			if( result.length == 1 && result[0] )
-				output.push(input[i]);
-		}
-	};
-	jsq['sum'] = function( input, output ) {
-		var ret = 0, i;
-		for( i=0; i<input.length; i++ )
-			ret += input[i] instanceof Array ? jsq.sum(input[i]) : input[i];
-		
-		return output && output.push(ret) || ret;
 	};
 	
 	_exports['jsq'] = jsq;
