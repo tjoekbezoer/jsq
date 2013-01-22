@@ -63,19 +63,21 @@
 			'([-+*/])|',
 			// (3) comparison operator
 			'((?:&&)|(?:\\|\\|)|(?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
-			// (4) control character
+			// (4) assignment operator
+			'(as)|',
+			// (5) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
-			// (5) variable
+			// (6) variable
 			'(\\$[a-z_][a-z0-9_]*)|',
-			// (6) identifier
+			// (7) identifier
 			'([a-z_][a-z0-9_]*)|',
-			// (7) float
+			// (8) float
 			'(\\d+\\.\\d+)|',
-			// (8) integer
+			// (9) integer
 			'(\\d+)|',
-			// (9) string. TODO: faster?
+			// (10) string. TODO: faster?
 			'("(?:\\\\.|[^"])*")|',
-			// (10) white space
+			// (11) white space
 			'(\\s+)'
 		].join(''),
 		'gi'
@@ -85,13 +87,14 @@
 		op_uny: 1,
 		op_arm: 2,
 		op_cmp: 3,
-		ctl: 4,
-		vrb: 5,
-		id: 6,
-		flt: 7,
-		itg: 8,
-		str: 9,
-		wsp: 10
+		op_ass: 4,
+		ctl: 5,
+		vrb: 6,
+		id: 7,
+		flt: 8,
+		itg: 9,
+		str: 10,
+		wsp: 11
 	};
 	
 	// TODO: Optimize throw mechanism. Group error strings here?
@@ -112,9 +115,9 @@
 			
 			// See what kind of token this is, and add it to the stack.
 			// This line is based on the fact that `token` will always return an array like
-			// [matched string, [subpattern, ...]], so in this case 10 elements after the
+			// [matched string, [subpattern, ...]], so in this case 11 elements after the
 			// matched string.
-			i = 0; while( ++i<=10 && token[i]==void(0) ){}
+			i = 0; while( ++i<=11 && token[i]==void(0) ){}
 			if( i == _t.str )
 				token[0] = token[0].slice(1,-1);
 			tokens.push({
@@ -219,6 +222,13 @@
 						case _t.op_cmp:
 							this.parse_binary();
 							break;
+						case _t.op_ass:
+							if( token.data == 'as' )
+								this.parse_assignment();
+							break;
+						case _t.vrb:
+							this.addup('variable').value = this.tokens.current().data;
+							break;
 						case _t.id:
 							this.parse_function();
 							break;
@@ -249,6 +259,23 @@
 		
 		return this;
 	};
+	Parser.prototype.parse_assignment = function() {
+		var token = this.tokens.skip(true),
+			num = 1;
+		
+		if( token && token.type == _t.vrb ) {
+			// If assignment follows a pipe, take the end of the pipe
+			// as the value for the assignment. Otherwise the entire pipe
+			// would be taken as input, producing unexpected results.
+			if( this.current.last.name == 'pipe' ) {
+				this.current = this.current.last;
+				num = 2;
+			}
+			this.wrap('assignment');
+			this.addup('name').value = token.data;
+			this.up(num);
+		}
+	};
 	// A binary is two expressions combined by an arithmetic- or a comparison operator.
 	// Binaries can be chained, where execution precedence is taken into account as per
 	// the normal arithmetic rules.
@@ -259,6 +286,7 @@
 		
 		if(
 			lhs && (
+				lhs.name == 'pipe' ||
 				token.type == _t.op_arm && lhs.name == 'comma' ||
 				// The left hand side is a binary, so it has 3 children:
 				// a lhs, an operator and a rhs. Perform an action based on
@@ -431,12 +459,10 @@
 	Parser.prototype.parse_literal = function() {
 		var token = this.tokens.current();
 		if( token.type == _t.str ) {
-			this.add('string').value = token.data;
+			this.addup('string').value = token.data;
 		} else {
-			this.add('number').value = parseFloat(token.data);
+			this.addup('number').value = parseFloat(token.data);
 		}
-		
-		this.up();
 	};
 	// Parse object definitions
 	Parser.prototype.parse_object = function() {
@@ -664,19 +690,27 @@
 		'<':  function( l, r ) { return l < r }
 	};
 	function _expression( input, output, branch ) {
+		var col, i, result;
+		
 		switch( branch.name ) {
+			case 'assignment':
+				_vars[branch.children[1].value] = _expression(input, [], branch.children[0]);
+				if( input instanceof Array )
+					output.push.apply(output, input);
+				else
+					output.push(input);
+				break;
 			case 'binary':
 				_binary(input, output, branch);
 				break;
 			case 'collect':
-				var col = [];
+				col = [];
 				branch.children.length && _expression(input, col, branch.children[0]);
 				output.push(col);
 				break;
 			case 'comma':
-				for( var i=0; i<branch.children.length; i++ ) {
+				for( i=0; i<branch.children.length; i++ )
 					_expression(input, output, branch.children[i]);
-				}
 				break;
 			case 'filter':
 				_filter(input, output, branch.children);
@@ -692,13 +726,18 @@
 				_object(input, output, branch.children);
 				break;
 			case 'parens':
-				var result = _expression(input, [], branch.children[0]);
+				result = _expression(input, [], branch.children[0]);
 				output.push.apply(output, result);
 				break;
 			case 'pipe':
 				input = _expression(input, output, branch.children[0]);
 				input = input.splice(0,input.length);
+				if( input.length == 1 )
+					input = input[0];
 				_expression(input, output, branch.children[1]);
+				break;
+			case 'variable':
+				output.push.apply(output, _vars[branch.value]);
 				break;
 		}
 		return output;
@@ -794,6 +833,10 @@
 		}
 	}
 	
+	// Store an expression's variable data in this hash. Can be a shared object
+	// since jsq() calls can never be parallel.
+	var _vars = {};
+	
 	// Public jsq() function
 	// callback = function(value, index, outputArray)
 	var jsq = function( data, query, callback, ctx ) {
@@ -803,6 +846,7 @@
 		parser.parse();
 		if( node = parser.tree.children[0] ) {
 			output = _expression(data, [], node);
+			_vars = {};
 			if( callback ) {
 				for( i=0; i<output.length; i++ ) {
 					if( callback.call(ctx||this, output[i], i, output) === false )
@@ -837,23 +881,20 @@
 		},
 		'length': function( input, output ) {
 			var i, item, key, count;
-			for( i=0; i<input.length; i++ ) {
-				item = input[i];
-				if( item instanceof Array || typeof item == 'string' ) {
-					output.push(item.length);
-				} else if( item instanceof Object ) {
-					count = 0;
-					for( key in item )
-						count++;
-					output.push(count);
-				} else {
-					output.push(0);
-				}
+			if( input instanceof Array || typeof input == 'string' ) {
+				output.push(input.length);
+			} else if( input instanceof Object ) {
+				count = 0;
+				for( key in input )
+					count++;
+				output.push(count);
+			} else {
+				output.push(0);
 			}
 		},
 		'map': function( input, output, argument ) {
 			for( var i=0; i<input.length; i++ ) {
-				output.push(_expression(input[i], [], argument));
+				output.push.apply(output, _expression(input[i], [], argument));
 			}
 		},
 		'select': function( input, output, argument ) {
