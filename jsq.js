@@ -64,7 +64,7 @@
 			// (3) comparison operator
 			'((?:&&)|(?:\\|\\|)|(?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
 			// (4) assignment operator
-			'(as)|',
+			'(as)(?= )|',
 			// (5) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
 			// (6) variable
