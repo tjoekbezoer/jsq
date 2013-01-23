@@ -397,24 +397,42 @@
 		// Two filters next to eachother without comma, pipe etc. should throw.
 		this.add('filter');
 		
-		while( (peek = this.tokens.peek()) && peek.data == '[' ) {
-			all = true;
-			this.tokens.next();
-			while( (peek = this.tokens.peek(true)) && peek.data != ']' ) {
-				this.tokens.skip(true);
-				this.parse();
-				all = false;
-			}
-			
-			if( all ) {
-				this.addup('key_all');
-				all = false;
-			}
-			
-			if( !(token = this.tokens.skip(true)) || token.data != ']' ) {
-				throw token ?
-					'jsq_parse_filter: Unexpected '+token.data+' at position '+token.index :
-					'jsq_parse_filter: Unexpected EOF';
+		while( peek = this.tokens.peek() ) {
+			if( peek.data == '[' ) {
+				all = true;
+				this.tokens.next();
+				while( (peek = this.tokens.peek(true)) && peek.data != ']' ) {
+					this.tokens.skip(true);
+					this.parse();
+					all = false;
+				}
+				
+				if( all ) {
+					this.addup('key_all');
+					all = false;
+				}
+				
+				if( !(token = this.tokens.skip(true)) || token.data != ']' ) {
+					throw token ?
+						'jsq_parse_filter: Unexpected '+token.data+' at position '+token.index :
+						'jsq_parse_filter: Unexpected EOF';
+				}
+			} else if(
+				(!this.current.children.length && peek.data != '.' || peek.data == '.' && this.tokens.next()) &&
+				(peek = this.tokens.peek()) && (
+					peek.type == _t.id ||
+					peek.type == _t.itg
+				)
+			) {
+				// Shorthand form
+				token = this.tokens.next();
+				if( token.type == _t.id ) {
+					this.addup('string').value = token.data;
+				} else {
+					this.addup('number').value = parseFloat(token.data);
+				}
+			} else {
+				break;
 			}
 		}
 		
