@@ -771,8 +771,13 @@
 		var child, i, j, element, key, result;
 		
 		// End of the chain, or filter is a single '.'
-		if( !filter.length )
-			return output.push(input != void(0) ? input[0] : null);
+		if( !filter.length ) {
+			input != void(0) && _each(input, function(input) {
+				output.push(input);
+			});
+			return;
+		}
+			
 		
 		filter = filter.slice(0);
 		child = filter.shift();
