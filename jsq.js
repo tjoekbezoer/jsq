@@ -19,6 +19,22 @@
 			array2 = [array2];
 		return array1.concat(array2);
 	}
+	function _each( obj, iterator ) {
+		if( obj == null ) return;
+		if( Array.prototype.forEach && obj.forEach === Array.prototype.forEach ) {
+			obj.forEach(iterator);
+		} else if( obj.length === +obj.length ) {
+			for( var i = 0, l = obj.length; i < l; i++ ) {
+				if( iterator(obj[i], i, obj) === false ) return;
+			}
+		} else {
+			for( var key in obj ) {
+				if( Object.prototype.hasOwnProperty.call(obj, key) ) {
+					if( iterator(obj[key], key, obj) === false ) return;
+				}
+			}
+		}
+	}
 	// When target is an object: return a shallow copy of target from which all keys
 	// also existing in source are removed. Both arguments have to be objects.
 	// When target is an array: return a copy of target where all values also existing in
@@ -531,6 +547,7 @@
 								case _t.str:
 								case _t.id:
 								case _t.ctl:
+								case _t.vrb:
 									this.add('value');
 									if(
 										token.type != _t.ctl ||
@@ -635,16 +652,6 @@
 	
 	
 	// Runtime
-	function run( input, output, branch ) {
-		if( branch.children && branch.children.length ) {
-			switch( branch.children[0].name ) {
-				default:
-					_expression(input, output, branch.children[0]);	
-			}
-		}
-		
-		return output;
-	}
 	function _binary( input, output, branch ) {
 		var op = branch.children[1].value,
 			lhv = branch.children[0],
@@ -731,7 +738,7 @@
 					_expression(input, output, branch.children[i]);
 				break;
 			case 'filter':
-				_filter(input, output, branch.children);
+				_filter(input, input, output, branch.children);
 				break;
 			case 'function_call':
 				_function(input, output, branch);
@@ -750,8 +757,6 @@
 			case 'pipe':
 				input = _expression(input, output, branch.children[0]);
 				input = input.splice(0,input.length);
-				if( input.length == 1 )
-					input = input[0];
 				_expression(input, output, branch.children[1]);
 				break;
 			case 'variable':
@@ -760,57 +765,63 @@
 		}
 		return output;
 	}
-	function _filter( input, output, filter ) {
-		var child, i, key, result;
+	// `all` is always the full input: `input` gets trimmed when this function
+	// is recursing.
+	function _filter( all, input, output, filter ) {
+		var child, i, j, element, key, result;
 		
 		// End of the chain, or filter is a single '.'
 		if( !filter.length )
-			return output.push(input != void(0) ? input : null);
+			return output.push(input != void(0) ? input[0] : null);
 		
 		filter = filter.slice(0);
 		child = filter.shift();
-		if( input instanceof Array ) {
-			if( child.name == 'key_all' ) {
-				// All array elements
-				for( i=0; i<input.length; i++ )
-					_filter(input[i], output, filter);
-			} else if( child.name == 'number' ) {
-				// Single array element
-				_filter(input[child.value], output, filter);
-			} else if(
-				child.name == 'binary' &&
-				child.children[1].value == '-' &&
-				child.children[0].value >= 0 &&
-				child.children[2].value >= child.children[0].value
-			) {
-				// TODO: Maybe integrate into Parser to allow more complexity? parse_range()?
-				// 
-				// Iterate range
-				var max = child.children[2].value;
-				if( max > input.length-1 )
-					max = input.length-1;
-				for( i=child.children[0].value; i<=max; i++ ) {
-					_filter(input[i], output, filter);
+		for( j=0; j<input.length; j++ ) {
+			element = input[j];
+			
+			if( element instanceof Array ) {
+				if( child.name == 'key_all' ) {
+					// All array elements
+					for( i=0; i<element.length; i++ )
+						_filter(all, [element[i]], output, filter);
+				} else if( child.name == 'number' ) {
+					// Single array element
+					_filter(all, [element[child.value]], output, filter);
+				} else if(
+					child.name == 'binary' &&
+					child.children[1].value == '-' &&
+					child.children[0].value >= 0 &&
+					child.children[2].value >= child.children[0].value
+				) {
+					// TODO: Maybe integrate into Parser to allow more complexity? parse_range()?
+					// 
+					// Iterate range
+					var max = child.children[2].value;
+					if( max > element.length-1 )
+						max = element.length-1;
+					for( i=child.children[0].value; i<=max; i++ ) {
+						_filter(all, [element[i]], output, filter);
+					}
+				} else if ( child.name != 'string' ) {
+					// Every other case: sub-expression
+					var sub = _expression(all, [], child);
+					for( i=0; i<sub.length; i++ )
+						_filter(all, [element[sub[i]]], output, filter);
 				}
-			} else if ( child.name != 'string' ) {
-				// Every other case: sub-expression
-				var sub = _expression(input, [], child);
-				for( i=0; i<sub.length; i++ )
-					_filter(input[sub[i]], output, filter);
-			}
-		} else if( input instanceof Object ) {
-			if( child.name == 'key_all' ) {
-				// All object properties
-				for( key in input )
-					_filter(input[key], output, filter);
-			} else if( child.name == 'number' || child.name == 'string' ) {
-				// Single object property
-				_filter(input[child.value], output, filter);
-			} else {
-				// Sub-expression
-				var sub = _expression(input, [], child);
-				for( i=0; i<sub.length; i++ )
-					_filter(input[sub[i]], output, filter);
+			} else if( element instanceof Object ) {
+				if( child.name == 'key_all' ) {
+					// All object properties
+					for( key in element )
+						_filter(all, [element[key]], output, filter);
+				} else if( child.name == 'number' || child.name == 'string' ) {
+					// Single object property
+					_filter(all, [element[child.value]], output, filter);
+				} else {
+					// Sub-expression
+					var sub = _expression([element], [], child);
+					for( i=0; i<sub.length; i++ )
+						_filter(all, [element[sub[i]]], output, filter);
+				}
 			}
 		}
 	}
@@ -833,7 +844,7 @@
 				if( exp.length == 1 )
 					key = exp[0];
 				else
-					throw 'runtime_object: Key definition with multiple values';
+					throw 'jsq_runtime_object: Key definition with multiple values';
 			} else {
 				key = el[0].value;
 			}
@@ -863,7 +874,7 @@
 		
 		parser.parse();
 		if( node = parser.tree.children[0] ) {
-			output = _expression(data, [], node);
+			output = _expression([data], [], node);
 			_vars = {};
 			if( callback ) {
 				for( i=0; i<output.length; i++ ) {
@@ -897,40 +908,60 @@
 				}
 			}
 		},
+		'keys': function( input, output ) {
+			_each(input, function( input ) {
+				if( input instanceof Object ) {
+					if( input instanceof Array ) {
+						for( var i=0; i<input.length; i++ )
+							output.push(i);
+					} else {
+						for( var key in input )
+							output.push(key);
+					}
+				}
+			});
+		},
 		'length': function( input, output ) {
-			var i, item, key, count;
-			if( input instanceof Array || typeof input == 'string' ) {
-				output.push(input.length);
-			} else if( input instanceof Object ) {
-				count = 0;
-				for( key in input )
-					count++;
-				output.push(count);
-			} else {
-				output.push(0);
-			}
+			_each(input, function( input ) {
+				if( input instanceof Array || typeof input == 'string' ) {
+					return output.push(input.length);
+				} else if( input instanceof Object ) {
+					var count = 0;
+					for( var key in input )
+						count++;
+					return output.push(count);
+				}
+			});
 		},
 		'map': function( input, output, argument ) {
-			for( var i=0; i<input.length; i++ ) {
-				output.push.apply(output, _expression(input[i], [], argument));
-			}
+			_each(input, function( input ) {
+				if( input instanceof Object ) {
+					var o = [];
+					output.push(o);
+					_each(input, function( input ) {
+						o.push.apply(o, _expression([input], [], argument));
+					});
+				}
+			});
 		},
 		'select': function( input, output, argument ) {
-			var i, result;
-			for( i=0; i<input.length; i++ ) {
-				result = _expression(input[i], [], argument);
+			for( var i=0; i<input.length; i++ ) {
+				var result = _expression([input[i]], [], argument);
 				if( result.length == 1 && result[0] )
 					output.push(input[i]);
 			}
 		},
 		'sum': function( input, output ) {
 			var ret = 0, i;
-			for( i=0; i<input.length; i++ )
-				ret += input[i] instanceof Array ? arguments.callee(input[i]) : input[i];
+			for( i=0; i<input.length; i++ ) {
+				ret += input[i] instanceof Array ?
+					arguments.callee(input[i]) :
+					input[i] == +input[i] ? input[i] : 0;
+			}
 			
 			return output && output.push(ret) || ret;
 		}
 	};
 	
 	_exports['jsq'] = jsq;
-})(typeof exports=='undefined'?window:exports);
+})(typeof exports=='undefined'?this:exports);
