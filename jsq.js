@@ -74,26 +74,28 @@
 	var _regex = new RegExp(
 		[
 			// (1) unary operator
-			'([+]{2}|[-]{2})|',
+			'(!(?!=)|~)|',
 			// (2) binary operator
-			'([-+*/])|',
+			'([-+*/\\\\^]|&(?!&))|',
 			// (3) comparison operator
 			'((?:&&)|(?:\\|\\|)|(?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
 			// (4) assignment operator
 			'(as)(?= )|',
 			// (5) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
-			// (6) variable
+			// (6) boolean
+			'(true|false)|',
+			// (7) variable
 			'(\\$[a-z_][a-z0-9_]*)|',
-			// (7) identifier
+			// (8) identifier
 			'([a-z_][a-z0-9_]*)|',
-			// (8) float
+			// (9) float
 			'(\\d+\\.\\d+)|',
-			// (9) integer
+			// (10) integer
 			'(\\d+)|',
-			// (10) string. TODO: faster?
+			// (11) string. TODO: single quotes
 			'("(?:\\\\.|[^"])*")|',
-			// (11) white space
+			// (12) white space
 			'(\\s+)'
 		].join(''),
 		'gi'
@@ -105,12 +107,13 @@
 		op_cmp: 3,
 		op_ass: 4,
 		ctl: 5,
-		vrb: 6,
-		id: 7,
-		flt: 8,
-		itg: 9,
-		str: 10,
-		wsp: 11
+		bln: 6,
+		vrb: 7,
+		id: 8,
+		flt: 9,
+		itg: 10,
+		str: 11,
+		wsp: 12
 	};
 	
 	// TODO: Optimize throw mechanism. Group error strings here?
@@ -133,9 +136,10 @@
 			// This line is based on the fact that `token` will always return an array like
 			// [matched string, [subpattern, ...]], so in this case 11 elements after the
 			// matched string.
-			i = 0; while( ++i<=11 && token[i]==void(0) ){}
+			i = 0; while( ++i<=12 && token[i]==void(0) ){}
 			if( i == _t.str )
 				token[0] = token[0].slice(1,-1);
+			// Add token.
 			tokens.push({
 				type: i,
 				index: _regex.lastIndex,
@@ -234,6 +238,9 @@
 					break;
 				default:
 					switch( token.type ) {
+						case _t.op_uny:
+							this.parse_unary();
+							break;
 						case _t.op_arm:
 						case _t.op_cmp:
 							this.parse_binary();
@@ -242,8 +249,11 @@
 							if( token.data == 'as' )
 								this.parse_assignment();
 							break;
+						case _t.bln:
+							this.addup('bool').value = token.data;
+							break;
 						case _t.vrb:
-							this.addup('variable').value = this.tokens.current().data;
+							this.addup('variable').value = token.data;
 							break;
 						case _t.id:
 							this.parse_function();
@@ -326,21 +336,38 @@
 				)
 			)
 		) {
+			// Current binary is more important than last expression.
+			// Steal rhs of the last expression and use it as lhs in this binary.
 			this.current = lhs;
 			this.parse_binary(lhs.last);
 			this.up();
-		} else if( lhs ) {
-			this.wrap('binary');
-			op = this.addup('operator');
-			op.value = token.data;
-			op.type = token.type;
-			
-			this.tokens.skip(true);
-			this.parse();
-			this.up();
+			return;
 		} else {
-			throw 'jsq_parse_binary: Unexpected '+this.tokens.current().data+' at position '+this.tokens.current().index;
+			// See if the - operator should be parsed as a unary instead.
+			if( token.data == '-' && (
+					!lhs ||
+					lhs.name == 'operator' ||
+					lhs.parent.name == 'comma' ||
+					lhs.parent.name == 'pipe'
+				)
+			) {
+				//console.log(lhs && lhs.name);
+				this.parse_unary();
+				return;
+			} else if( lhs ) {
+				this.wrap('binary');
+				op = this.addup('operator');
+				op.value = token.data;
+				op.type = token.type;
+				
+				this.tokens.skip(true);
+				this.parse();
+				this.up();
+				return;
+			}
 		}
+		
+		throw 'jsq_parse_binary: Unexpected '+this.tokens.current().data+' at position '+this.tokens.current().index;
 	};
 	// 
 	Parser.prototype.parse_collection = function() {
@@ -599,10 +626,16 @@
 		//}
 		this.up();
 	};
+	Parser.prototype.parse_unary = function() {
+		var token = this.tokens.current();
+		if( !this.tokens.skip(true) )
+			throw 'jsq_parse_unary: Unexpected EOF';
+		this.add('unary').value = token.data;
+		this.parse();
+		this.up();
+	};
 	Parser.prototype.toJSON = function( branch ) {
-		var ret = {},
-			key;
-		
+		var ret = {}, key;
 		branch = branch || this.tree;
 		
 		for( key in branch ) {
@@ -672,6 +705,9 @@
 					case '-':
 					case '*':
 					case '/':
+					case '&':
+					case '\\':
+					case '^':
 					case '&&':
 					case '||':
 					case '==':
@@ -712,7 +748,10 @@
 		'>=': function( l, r ) { return l >= r },
 		'<=': function( l, r ) { return l <= r },
 		'>':  function( l, r ) { return l > r },
-		'<':  function( l, r ) { return l < r }
+		'<':  function( l, r ) { return l < r },
+		'&':	function( l, r ) { return l & r },
+		'\\':	function( l, r ) { return l | r },
+		'^':	function( l, r ) { return l ^ r }
 	};
 	function _expression( input, output, branch ) {
 		var col, i, result;
@@ -727,6 +766,9 @@
 				break;
 			case 'binary':
 				_binary(input, output, branch);
+				break;
+			case 'bool':
+				output.push(branch.value=='true'?true:false);
 				break;
 			case 'collect':
 				col = [];
@@ -759,13 +801,16 @@
 				input = input.splice(0,input.length);
 				_expression(input, output, branch.children[1]);
 				break;
+			case 'unary':
+				_unary(input, output, branch);
+				break;
 			case 'variable':
 				output.push.apply(output, _vars[branch.value]);
 				break;
 		}
 		return output;
 	}
-	// `all` is always the full input: `input` gets trimmed when this function
+	// `all` is always the full input; `input` gets trimmed when this function
 	// is recursing.
 	function _filter( all, input, output, filter ) {
 		var child, i, j, element, key, result;
@@ -777,7 +822,6 @@
 			});
 			return;
 		}
-			
 		
 		filter = filter.slice(0);
 		child = filter.shift();
@@ -835,15 +879,29 @@
 			jsq['fn'][branch.value](input, output, branch.children[0] && branch.children[0].children[0]);
 		}
 	}
+	// Creating an object is a complex one. When defining an object in JSQ, multiple actual objects
+	// can be returned. This happens in two cases:
+	// 1) There are multiple inputs. An object is created for every input found.
+	// 2) At least one element has a filter as value that produces multiple outputs.
+	// 		An object is created for every output. If multiple element value filters produce
+	// 		multiple outputs, a cartesian product between all these outputs is created.
 	function _object( input, output, elements, result ) {
 		var i, el, key, exp;
-		// Only clone on nested call
-		elements = result ? elements.slice(0) : elements;
+		
+		// Create an object for every input found.
+		if( result === void(0) ) {
+			for( i=0; i<input.length; i++ ) {
+				_object([input[i]], output, elements, null);
+			}
+			return;
+		}
+		
+		elements = elements.slice(0);
 		result = _extend({}, result);
 		
 		if( el = elements.shift() ) {
 			el = el.children;
-			// key
+			// Key
 			if( el[0].children.length ) {
 				exp = _expression(input, [], el[0].children[0]);
 				if( exp.length == 1 )
@@ -854,7 +912,7 @@
 				key = el[0].value;
 			}
 			
-			// value
+			// Value
 			// If the expression returns multiple results, output that many objects.
 			// If multiple values return multiple results, perform a cross join.
 			exp = _expression(input, [], el[1].children[0]);
@@ -864,6 +922,19 @@
 			}
 		} else {
 			output.push(result);
+		}
+	}
+	function _unary( input, output, branch ) {
+		var op = branch.value,
+				exp = _expression(input, [], branch.children[0]),
+				i;
+		for( i=0; i<exp.length; i++ ) {
+			if( op === '!' )
+				output.push(!exp[i]);
+			else if( op === '-' )
+				output.push(-exp[i]);
+			else if( op === '~' )
+				output.push(~exp[i]);
 		}
 	}
 	
@@ -941,10 +1012,8 @@
 		'map': function( input, output, argument ) {
 			_each(input, function( input ) {
 				if( input instanceof Object ) {
-					var o = [];
-					output.push(o);
 					_each(input, function( input ) {
-						o.push.apply(o, _expression([input], [], argument));
+						output.push.apply(output, _expression([input], [], argument));
 					});
 				}
 			});
