@@ -351,7 +351,6 @@
 					lhs.parent.name == 'pipe'
 				)
 			) {
-				//console.log(lhs && lhs.name);
 				this.parse_unary();
 				return;
 			} else if( lhs ) {
@@ -945,8 +944,15 @@
 	// Public jsq() function
 	// callback = function(value, index, outputArray)
 	var jsq = function( data, query, callback, ctx ) {
-		var parser = new Parser(query),
-			node, output, i;
+		// If no input data is given, run jsq without data.
+		if( typeof data == 'string' && typeof query != 'string' ) {
+			ctx = callback;
+			callback = query;
+			query = data;
+			data = null;
+		}
+		
+		var node, output, i, parser = new Parser(query);
 		
 		parser.parse();
 		if( node = parser.tree.children[0] ) {
