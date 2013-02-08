@@ -319,6 +319,7 @@
 				// its operator.
 				lhs.name == 'binary' &&
 				(prev = lhs.children[1]) && (
+					// Logical precedence
 					(
 						token.data == '&&' &&
 						prev.value == '||'
@@ -330,11 +331,13 @@
 						prev.type == _t.op_cmp &&
 						token.type == _t.op_arm
 					) || (
+					// Arithmetic precedence
 						(token.data == '*' || token.data == '/') &&
 						(prev.value == '+' || prev.value == '-')
-					) || (
-						token.data == '^' && prev.value == '\\'
-					)
+					) ||
+					// Bitwise precedence
+					token.data == '&' && (prev.value == '^' || prev.value == '\\') ||
+					token.data == '^' && prev.value == '\\'
 				)
 			)
 		) {
