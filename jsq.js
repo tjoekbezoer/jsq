@@ -332,6 +332,8 @@
 					) || (
 						(token.data == '*' || token.data == '/') &&
 						(prev.value == '+' || prev.value == '-')
+					) || (
+						token.data == '^' && prev.value == '\\'
 					)
 				)
 			)
