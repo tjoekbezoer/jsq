@@ -1,13 +1,13 @@
 
-module("Lexer");
+module('Lexer');
 
-test("is constructable without query", function() {
+test('is constructable without query', function() {
 	var lexer = new jsq.Lexer();
 	
 	ok(lexer instanceof jsq.Lexer);
 });
 	
-test("understands all supported tokens", function() {
+test('understands all supported tokens', function() {
 	var lexer = new jsq.Lexer('12_aB_1_+3.2"a1!@#\\\""-+*/$aB_1_+++1---1.[a]("a"),&&||==!=>=<=<>: {}'),
 		result = [];
 	
@@ -15,7 +15,7 @@ test("understands all supported tokens", function() {
 	//expect(lexer.tokens).toEqual(result);
 });
 
-test("method next() works as expected", function() {
+test('method next() works as expected', function() {
 	var lexer = new jsq.Lexer('1+2+3');
 	
 	equal(lexer.next().data, '+');
@@ -23,7 +23,7 @@ test("method next() works as expected", function() {
 	equal(lexer.next(10), null);
 });
 
-test("method current() works as expected", function() {
+test('method current() works as expected', function() {
 	var lexer = new jsq.Lexer('1+2');
 	
 	equal(lexer.current().data, '1');
@@ -33,7 +33,7 @@ test("method current() works as expected", function() {
 	equal(lexer.current(), null);
 });
 
-test("method peek() works as expected", function() {
+test('method peek() works as expected', function() {
 	var lexer = new jsq.Lexer('1+ 2	 +3');
 	
 	equal(lexer.peek().data, '+');
@@ -47,7 +47,7 @@ test("method peek() works as expected", function() {
 	equal(lexer.peek(true), null);
 });
 
-test("method skip() works as expected", function() {
+test('method skip() works as expected', function() {
 	var lexer = new jsq.Lexer('1+ 2	 +3');
 	
 	lexer.skip();
@@ -64,4 +64,15 @@ test("method skip() works as expected", function() {
 	equal(lexer.skip(), true);
 	lexer.next();
 	equal(lexer.skip(), false);
+});
+
+test('method back() works as expected', function() {
+	var lexer = new jsq.Lexer('1+ 2	 +3');
+	
+	lexer.next(3);
+	equal(lexer.back().data, '+');
+	equal(lexer.current().data, '2');
+	equal(lexer.back(2).data, '1');
+	equal(lexer.back(5), false);
+	equal(lexer.current().data, '2');
 });
