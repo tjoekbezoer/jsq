@@ -67,7 +67,6 @@
 			target = null;
 		}
 		
-		
 		return target;
 	}
 	
@@ -153,6 +152,14 @@
 		this.i = 0;
 	};
 	Lexer.tokenTypes = _t;
+	// Look back `num` non-whitespace tokens without moving the cursor.
+	Lexer.prototype.back = function( num ) {
+		var i = this.i, token;
+		num = num>0 ? num : 1;
+		while( num-- )
+			while( --i>=0 && (token = this.tokens[i]).type == _t.wsp );
+		return token && (token.type != _t.wsp ? this.tokens[i] : false) || false;
+	};
 	Lexer.prototype.current = function() {
 		return this.tokens[this.i] || null;
 	};
@@ -352,7 +359,8 @@
 			if( token.data == '-' && (
 					!lhs ||
 					lhs.name == 'operator' ||
-					lhs.parent.name == 'comma' ||
+					// to parse things like 1,-1 and 1,2--1 correctly
+					lhs.parent.name == 'comma' && this.tokens.back().data == ',' ||
 					lhs.parent.name == 'pipe'
 				)
 			) {
@@ -398,13 +406,6 @@
 			cur = this.current,
 			peek;
 		
-		// Is this comma nested?
-		/*while( cur ) {
-			if( cur.name == 'comma' )
-				throw 'jsq_parse_comma: Unexpected , at position '+this.tokens.current().index;
-			cur = cur.parent;
-		}*/
-		
 		if( len && (cur = this.current.children[len-1]).name == 'comma' ) {
 			this.current = cur;
 		} else if( len ) {
@@ -426,16 +427,7 @@
 		}
 		this.up();
 	};
-	// Parses a literal, or an object filter
-	// Filter examples:
-	//   .
-	//   .[]
-	//   .[foo]
-	//   .["foo"]
-	//   .[2]
-	//   .["foo"][2]
-	//   .[foo][][4]
-	//   etc.
+	// Parses an object filter
 	Parser.prototype.parse_filter = function() {
 		var all = true,
 			peek, token;
@@ -574,13 +566,19 @@
 							this.tokens.skip(true);
 							token = this.tokens.skip(true);
 							switch( token.type ) {
+								case _t.op_uny:
+								case _t.op_arm:
 								case _t.itg:
 								case _t.str:
 								case _t.id:
 								case _t.ctl:
+								case _t.bln:
 								case _t.vrb:
 									this.add('value');
 									if(
+										// When token is arithmetic, only '-'' is allowed (as a unary)
+										token.type == _t.op_arm && token.data != '-' ||
+										// Throw when another ',' or ':' token is found
 										token.type != _t.ctl ||
 										token.data == '.' || token.data == '[' || token.data == '(' || token.data == '{'
 									) {
@@ -617,17 +615,9 @@
 	};
 	// 
 	Parser.prototype.parse_pipe = function() {
-		var peek;
-		
 		this.wrap('pipe');
-		
-		// while(
-		// 	(peek = this.tokens.peek(true)) &&
-		// 	peek.data != '|'
-		// ) {
-			this.tokens.skip(true);
-			this.parse();
-		//}
+		this.tokens.skip(true);
+		this.parse();
 		this.up();
 	};
 	Parser.prototype.parse_unary = function() {
@@ -920,6 +910,8 @@
 			// If the expression returns multiple results, output that many objects.
 			// If multiple values return multiple results, perform a cross join.
 			exp = _expression(input, [], el[1].children[0]);
+			if( !exp.length )
+				return _object(input, output, elements, result);
 			for( i=0; i<exp.length; i++ ) {
 				result[key] = exp[i];
 				_object(input, output, elements, result);
