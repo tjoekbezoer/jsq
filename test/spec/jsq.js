@@ -1,12 +1,15 @@
 module('jsq function');
 test('runs with all argument combinations', function() {
+	deepEqual(jsq(), [], 'No arguments');
+	
 	// Return value
 	deepEqual(jsq([1,2], '.[]'), [1,2], 'Return value with input');
+	deepEqual(jsq([1,2], [3,4], '.[]'), [1,2,3,4], 'Return value with multiple inputs');
 	deepEqual(jsq('1,2'), [1,2], 'Return value without input');
 	
 	// Calling jsq with empty query
-	deepEqual(jsq(''), [], 'Empty query');
-	deepEqual(jsq(), [], 'No arguments');
+	deepEqual(jsq({'foo': 'bar'}, ''), [], 'Empty query with input');
+	deepEqual(jsq(''), [], 'Empty query without input');
 	
 	// Callback
 	var test = 0;

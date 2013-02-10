@@ -17,10 +17,21 @@
 		},
 		"sixth": ["first","second"]
 	};
-
+	
+	function eq( input, query, result, title ) {
+		if( typeof input == 'string' ) {
+			title = result;
+			result = query;
+			query = input;
+			input = [];
+		}
+		
+		deepEqual(jsq(input, query), result, title);
+	}
+	
 	module('Interpreter');
 	test('executes unary operations correctly', function() {
-		deepEqual(jsq('-1, ~1, !1'), [-1,-2,false]);
+		deepEqual(jsq('-1, ~1, !1, -2'), [-1,-2,false,-2]);
 		deepEqual(jsq('1--1'), [2]);
 		deepEqual(jsq('0>-1, 1--1'), [true,2]);
 	});
@@ -108,7 +119,7 @@
 	});
 	
 	test('executes object creation correctly', function() {
-		deepEqual(jsq('{"foo":1, "neg":-1, "bar":[1,2,3], "name":"baz", "bool":true, "pos":!!2, "last":~1}'), [{
+		deepEqual(jsq('{"foo":1, "neg": -1, "bar":[1,2,3], "name":"baz", "bool":true, "pos":!!2, "last":~1}'), [{
 			'foo': 1,
 			'neg': -1,
 			'bar': [1,2,3],
@@ -116,29 +127,45 @@
 			'bool': true,
 			'pos': true,
 			'last': -2
-		}], 'Object creation with simple values');
+		}], 'With simple values');
+		deepEqual(jsq([1,2], '{first: .}'), [{'first': [1,2]}], 'Using filter as element value');
+		deepEqual(jsq([1,2], '{first: .[]}'), [{'first': 1}, {'first': 2}], 'Using filter that produces multiple results as value');
 		deepEqual(jsq('{"first":1, "second":(1,2)}'), [{
 			'first': 1,
 			'second': 1
 		}, {
 			'first': 1,
 			'second': 2
-		}], 'Multiple objects are created when element value produces multiple results');
+		}], 'Using inline expression that produces multiple results as value');
 		deepEqual(jsq('{"first":(1,2), "second":(3,4)}'), [
 			{'first':1, 'second':3},
 			{'first':1, 'second':4},
 			{'first':2, 'second':3},
 			{'first':2, 'second':4}
-		], 'Multiple element values that produce multiple results: cartesian product');
+		], 'Using multiple inline expressions that produce multiple results: cartesian product');
 		deepEqual(jsq({"third":3, "2":true}, '{"first":1, "second":1,third,2}'), [{
 			'first': 1,
 			'second': 1,
 			'third': 3,
 			'2': true
 		}], 'Shorthand element definitions');
-		deepEqual(jsq('{"first":1, "second":1,third,2}'), [{
+		deepEqual(jsq({}, '{"first":1, "second":1,third,2}'), [{
 			'first': 1,
 			'second': 1
-		}], 'Non-matching shorthand element definitions are ignored');
+		}], 'Non-matching shorthand element definitions are ignored when input is object');
+		deepEqual(jsq([], '{"first":1, "second":1,third,2}'), [{
+			'first': 1,
+			'second': 1
+		}], 'Non-matching shorthand element definitions are ignored when input is array');
+	});
+	
+	test('executes variable definitions correctly', function() {
+		eq('1 as $test | $test', [1]);
+		eq('1 as $test | -$test, $test-1, 2-$test, $test+1, 2+$test', [-1,0,1,2,3]);
+		
+		eq(simple, '"second" as $key | .[$key]', [2]);
+		eq(simple, '("second","third") as $key | .[$key]', [2,3]);
+		eq(complex, '.sixth[] as $key | .[$key]', [1,2]);
+		eq(complex, '.fifth as $obj | $obj["foo"]', ['bar']);
 	});
 })();
