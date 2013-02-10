@@ -260,7 +260,7 @@
 							this.addup('bool').value = token.data;
 							break;
 						case _t.vrb:
-							this.addup('variable').value = token.data;
+							this.parse_variable();
 							break;
 						case _t.id:
 							this.parse_function();
@@ -628,6 +628,16 @@
 		this.parse();
 		this.up();
 	};
+	Parser.prototype.parse_variable = function() {
+		var current = this.add('variable'),
+				peek;
+		current.value = this.tokens.current().data;
+		
+		if( (peek = this.tokens.peek()) && peek.data == '[' )
+			this.parse_filter();
+		
+		this.up();
+	};
 	Parser.prototype.toJSON = function( branch ) {
 		var ret = {}, key;
 		branch = branch || this.tree;
@@ -799,7 +809,7 @@
 				_unary(input, output, branch);
 				break;
 			case 'variable':
-				output.push.apply(output, _vars[branch.value]);
+				_variable(input, output, branch);
 				break;
 		}
 		return output;
@@ -918,6 +928,14 @@
 			}
 		} else {
 			output.push(result);
+		}
+	}
+	function _variable( input, output, branch ) {
+		var filter;
+		if( filter = branch.children[0] ) {
+			output.push.apply(output, _filter(_vars[branch.value], _vars[branch.value], output, filter.children));
+		} else {
+			output.push.apply(output, _vars[branch.value]);
 		}
 	}
 	function _unary( input, output, branch ) {
