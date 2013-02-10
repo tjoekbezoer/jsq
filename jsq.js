@@ -940,24 +940,30 @@
 	
 	// Public jsq() function
 	// callback = function(value, index, outputArray)
-	var jsq = function( data, query, callback, ctx ) {
-		// If no input data is given, run jsq without data.
-		if( typeof data == 'string' && typeof query != 'string' ) {
-			ctx = callback;
-			callback = query;
-			query = data;
-			data = null;
-		}
+	var jsq = function( /*data..., query, callback, ctx*/ ) {
+		// Determine arguments
+		var input = [],
+				args = Array.prototype.slice.call(arguments, 0),
+				arg, node, output, i, parser,
+				query, callback, ctx;
+		// All arguments preceding the query are input values
+		while( (arg = args.shift()) && typeof arg != 'string' )
+			input.push(arg);
+		if( typeof arg != 'string' ) return [];
+		query = arg;
+		if( callback = args.shift() )
+			ctx = args.shift() || this;
 		
-		var node, output, i, parser = new Parser(query);
-		
+		// Perform query
+		parser = new Parser(query);
 		parser.parse();
 		if( node = parser.tree.children[0] ) {
-			output = _expression([data], [], node);
+			output = _expression(input, [], node);
+			// Reset _vars for this query
 			_vars = {};
-			if( callback ) {
+			if( typeof callback == 'function' ) {
 				for( i=0; i<output.length; i++ ) {
-					if( callback.call(ctx||this, output[i], i, output) === false )
+					if( callback.call(ctx, output[i], i, output) === false )
 						break;
 				}
 			}
