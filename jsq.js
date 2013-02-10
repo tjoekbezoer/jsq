@@ -157,7 +157,7 @@
 		var i = this.i, token;
 		num = num>0 ? num : 1;
 		while( num-- )
-			while( --i>=0 && (token = this.tokens[i]).type == _t.wsp );
+			while( --i>=0 && (token = this.tokens[i]).type == _t.wsp ) {}
 		return token && (token.type != _t.wsp ? this.tokens[i] : false) || false;
 	};
 	Lexer.prototype.current = function() {
@@ -811,7 +811,7 @@
 		
 		// End of the chain, or filter is a single '.'
 		if( !filter.length ) {
-			input != void(0) && _each(input, function(input) {
+			input[0] != void(0) && _each(input, function(input) {
 				output.push(input);
 			});
 			return;
@@ -882,9 +882,9 @@
 	function _object( input, output, elements, result ) {
 		var i, el, key, exp;
 		
-		// Create an object for every input found.
+		// Create an object for every input found. If input is empty, run at least once.
 		if( result === void(0) ) {
-			for( i=0; i<input.length; i++ ) {
+			for( i=0; i<input.length || input.length == 0 && !i; i++ ) {
 				_object([input[i]], output, elements, null);
 			}
 			return;
