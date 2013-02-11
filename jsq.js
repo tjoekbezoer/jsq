@@ -224,61 +224,59 @@
 			token;
 		
 		while( token = this.tokens.current() ) {
-			switch( token.data ) {
-				case '.':
-					this.parse_filter();
+			switch( token.type ) {
+				case _t.op_uny:
+					this.parse_unary();
 					break;
-				case '(':
-					this.parse_parens();
+				case _t.op_arm:
+				case _t.op_cmp:
+					this.parse_binary();
 					break;
-				case '[':
-					this.parse_collection();
+				case _t.op_ass:
+					if( token.data == 'as' )
+						this.parse_assignment();
 					break;
-				case '{':
-					this.parse_object();
+				case _t.bln:
+					this.addup('bool').value = token.data;
 					break;
-				case ',':
-					this.parse_comma();
+				case _t.vrb:
+					this.parse_variable();
 					break;
-				case '|':
-					this.parse_pipe();
+				case _t.id:
+					this.parse_function();
 					break;
+				case _t.flt:
+				case _t.itg:
+				case _t.str:
+					this.parse_literal();
+					break;
+				case _t.wsp:
+					this.tokens.next();
+					continue;
 				default:
-					switch( token.type ) {
-						case _t.op_uny:
-							this.parse_unary();
+					switch( token.data ) {
+						case '.':
+							this.parse_filter();
 							break;
-						case _t.op_arm:
-						case _t.op_cmp:
-							this.parse_binary();
+						case '(':
+							this.parse_parens();
 							break;
-						case _t.op_ass:
-							if( token.data == 'as' )
-								this.parse_assignment();
+						case '[':
+							this.parse_collection();
 							break;
-						case _t.bln:
-							this.addup('bool').value = token.data;
+						case '{':
+							this.parse_object();
 							break;
-						case _t.vrb:
-							this.parse_variable();
+						case ',':
+							this.parse_comma();
 							break;
-						case _t.id:
-							this.parse_function();
+						case '|':
+							this.parse_pipe();
 							break;
-						case _t.flt:
-						case _t.itg:
-						case _t.str:
-							this.parse_literal();
-							break;
-						case _t.wsp:
-							this.tokens.next();
-							continue;
 						default:
 							throw 'jsq_parse: Unrecognized \''+token.data+'\' at position '+token.index;
 					}
-						
 			}
-			
 			// If this is a subroutine of parse(), break out when
 			// we're back in the branch where it was called
 			if( this.current.id && this.current.id == branchId )
@@ -403,24 +401,29 @@
 	// be nested. Lists can be nested inside parenthesis and square/curly brackets.
 	Parser.prototype.parse_comma = function() {
 		var len = this.current.children.length,
-			cur = this.current,
-			peek;
+				cur = this.current,
+				peek;
 		
 		if( len && (cur = this.current.children[len-1]).name == 'comma' ) {
+			// Last child was already a comma? Add this to that branch
 			this.current = cur;
 		} else if( len ) {
+			// Otherwise wrap last child and the new value into a new comma branch
 			this.wrap('comma');
 		} else {
 			throw 'jsq_parse_comma: Unexpected , at position '+this.tokens.current().index;
 		}
 		
+		// TODO: When )]}| is encountered, throw?
 		while(
-			(peek = this.tokens.peek(true)) &&
-			peek.data != ',' &&
-			peek.data != ')' &&
-			peek.data != ']' &&
-			peek.data != '}' &&
-			peek.data != '|'
+			(peek = this.tokens.peek(true)) && (
+				peek.type != _t.ctl ||
+				peek.data != ',' &&
+				peek.data != ')' &&
+				peek.data != ']' &&
+				peek.data != '}' &&
+				peek.data != '|'
+			)
 		) {
 			this.tokens.skip(true);
 			this.parse();
