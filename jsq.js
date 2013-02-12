@@ -339,6 +339,8 @@
 		if(
 			lhs && (
 				lhs.name == 'pipe' ||
+				// Value assignment, eg.: .foo=1 or .foo|=.[0]
+				lhs.name == 'assignment' && lhs.children.length == 3 ||
 				token.type == _t.op_arm && lhs.name == 'comma' ||
 				// The left hand side is a binary, so it has 3 children:
 				// a lhs, an operator and a rhs. Perform an action based on
@@ -852,14 +854,20 @@
 				// Simple assignment. Take the result from the rhs expression, and assign
 				// it to elements resulting from the lhs filter. Is the rhs expression produces
 				// multiple results, use the last.
-				exp = _expression(input, [], children[2]);
-				if( (exp = exp.pop()) != void(0) ) {
-					_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
-						obj[key] = exp;
-					});
-				}
-				output.push.apply(output, inputCopy);
+				exp = _expression(input, [], children[2]).pop() || null;
+				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
+					obj[key] = exp;
+				});
+			} else if( op == '|=' ) {
+				// 'Update' assignment. Use the lhs filter as input to evaluate the rhs expression, and
+				// assign the result to the elements resulting from the lhs filter.
+				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
+					exp = _expression([obj[key]], [], children[2]).pop() || null;
+					obj[key] = exp;
+				});
 			}
+			
+			output.push.apply(output, inputCopy);
 		}
 	}
 	// Interpret a filter.
@@ -882,6 +890,8 @@
 		child = filter.shift();
 		for( j=0; j<input.length; j++ ) {
 			element = input[j];
+			// When querying for sub-sub-keys, the result can be undefined at the first sub-key.
+			if( element == void(0) ) continue;
 			
 			// TODO: `range` as key selector for arrays
 			if( !child ) {

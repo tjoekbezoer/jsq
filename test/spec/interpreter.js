@@ -22,6 +22,14 @@
 		"sixth": ["first","second"],
 		"seventh": ["foo", "bar"]
 	};
+	var multiple = [{
+		"first": 1,
+		"second": 2,
+		"third": 3
+	}, {
+		"first": 4,
+		"second": 5
+	}];
 	
 	function eq( input, query, result, title ) {
 		if( typeof input == 'string' ) {
@@ -88,10 +96,13 @@
 		eq(simple, '.second', [2]);
 		
 		// Complex object
-		eq(complex, '.[]', [1,2,3,complex['fourth'],complex['fifth'],complex['sixth'],complex['seventh']]);
-		eq(complex, '.["fifth"]["baz"], .["fifth"].baz, .fifth["baz"], .fifth.baz', [3,3,3,3]);
+		eq(complex, '.[]', [1,2,3,complex['fourth'],complex['fifth'],complex['sixth'],complex['seventh']], 'All child elements');
+		eq(complex, '.["fifth"]["baz"], .["fifth"].baz, .fifth["baz"], .fifth.baz', [3,3,3,3], 'Sub-keys');
+		eq(complex, '.fifth.sub.notfound', [], 'Unfound sub-keys on object');
+		eq(complex, '.fourth.sub.notfound', [], 'Unfound sub-keys on array');
 		eq(complex, '.fifth[]', ['bar',3,complex['fifth']['sub']]);
 		eq(complex, '.fourth', [complex["fourth"]]);
+		
 		eq(complex, '.fourth[]', complex["fourth"], 'All children of a sub-key');
 		eq([{'first':1}, {'first':2}], '.[].first', [1,2], 'Sub-key of all children');
 		// Expression as key
@@ -195,6 +206,15 @@
 			'first':2,
 			'second': 2
 		}], 'Simple assignment');
+		eq(input1, '.third = 3', [{
+			'first': 1,
+			'second': 2,
+			'third': 3
+		}], 'Assigning to an unknown key creates it');
+		eq(input1, '.first = .third', [{
+			'first': null,
+			'second': 2
+		}], 'Assigning an unfound filter sets lhs to null');
 		deepEqual(input1, {
 			'first': 1,
 			'second': 2
@@ -225,5 +245,21 @@
 				'sub2': 5
 			}
 		}], 'Assigning multiple sub-elements at once');
+		
+		eq(multiple, '.[0].first = .[1] | .[0].first.first = 6 | .[1]', [{
+			'first': 4,
+			'second': 5
+		}], 'Assignment is by value, not by reference');
+		
+		eq(input2, '.second |= .sub1', [{'first': 1, 'second': 2}], 'Update assignment');
+		eq(input2, '.second |= .sub3', [{'first': 1, 'second': null}], 'Assigning an unfound sub-filter sets lhs to null');
+		eq(input2, '.third |= .', [{
+			'first': 1,
+			'second': {
+				'sub1': 2,
+				'sub2': 3
+			},
+			'third': null
+		}], 'Assigning to an unknown key creates it and sets it to null');
 	});
 })();
