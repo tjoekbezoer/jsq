@@ -13,9 +13,14 @@
 		"fourth": [1,2,3,4,5,6,7,8],
 		"fifth": {
 			"foo": "bar",
-			"baz": 3
+			"baz": 3,
+			"sub": {
+				"one": 1,
+				"two": 2
+			}
 		},
-		"sixth": ["first","second"]
+		"sixth": ["first","second"],
+		"seventh": ["foo", "bar"]
 	};
 	
 	function eq( input, query, result, title ) {
@@ -83,14 +88,16 @@
 		eq(simple, '.second', [2]);
 		
 		// Complex object
-		eq(complex, '.[]', [1,2,3,complex['fourth'],complex['fifth'],complex["sixth"]]);
+		eq(complex, '.[]', [1,2,3,complex['fourth'],complex['fifth'],complex['sixth'],complex['seventh']]);
 		eq(complex, '.["fifth"]["baz"], .["fifth"].baz, .fifth["baz"], .fifth.baz', [3,3,3,3]);
-		eq(complex, '.fifth[]', ['bar',3]);
+		eq(complex, '.fifth[]', ['bar',3,complex['fifth']['sub']]);
 		eq(complex, '.fourth', [complex["fourth"]]);
-		eq(complex, '.fourth[]', complex["fourth"]);
+		eq(complex, '.fourth[]', complex["fourth"], 'All children of a sub-key');
+		eq([{'first':1}, {'first':2}], '.[].first', [1,2], 'Sub-key of all children');
 		// Expression as key
 		eq(complex, '.fourth[.fourth[0]]', [2]);
-		eq(complex, '.[.sixth[]]', [1,2]);
+		eq(complex, '.[.sixth[]]', [1,2], 'Sub-expression in a filter');
+		eq(complex, '.fifth[.seventh[0]]', ['bar'], 'Sub-expression in a sub-filter');
 	});
 
 	test('executes pipes correctly', function() {
