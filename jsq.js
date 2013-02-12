@@ -12,6 +12,17 @@
 		}
 		return target;
 	}
+	// Deep copy for simple objects and array
+	function _copy( target ) {
+		if( !(target instanceof Object) )
+			return target;
+		
+		var result = new target.constructor;
+		_each(target, function( val, key ) {
+			result[key] = _copy(val);
+		});
+		return result;
+	}
 	function _concat( array1, array2 ) {
 		if( !(array1 instanceof Array) )
 			array1 = [array1];
@@ -79,7 +90,7 @@
 			// (3) comparison operator
 			'((?:&&)|(?:\\|\\|)|(?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
 			// (4) assignment operator
-			'(as)(?= )|',
+			'(as(?= )|=|\\|=)|',
 			// (5) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
 			// (6) boolean
@@ -233,8 +244,7 @@
 					this.parse_binary();
 					break;
 				case _t.op_ass:
-					if( token.data == 'as' )
-						this.parse_assignment();
+					this.parse_assignment(token);
 					break;
 				case _t.bln:
 					this.addup('bool').value = token.data;
@@ -290,22 +300,33 @@
 		
 		return this;
 	};
-	Parser.prototype.parse_assignment = function() {
+	Parser.prototype.parse_assignment = function( operatorToken ) {
 		var token = this.tokens.skip(true),
-			num = 1;
+				num = 1;
 		
-		if( token && token.type == _t.vrb ) {
-			// If assignment follows a pipe, take the end of the pipe
-			// as the value for the assignment. Otherwise the entire pipe
-			// would be taken as input, producing unexpected results.
-			if( this.current.last.name == 'pipe' ) {
-				this.current = this.current.last;
-				num = 2;
-			}
-			this.wrap('assignment');
-			this.addup('name').value = token.data;
-			this.up(num);
+		// If assignment follows a pipe, take the end of the pipe
+		// as the value for the assignment. Otherwise the entire pipe
+		// would be taken as input, producing unexpected results.
+		if( this.current.last.name == 'pipe' ) {
+			this.current = this.current.last;
+			num = 2;
 		}
+		
+		this.wrap('assignment');
+		switch( operatorToken.data ) {
+			case 'as':
+				if( token && token.type == _t.vrb )
+					this.addup('name').value = token.data;
+				break;
+			case '=':
+			case '|=':
+				if( this.current.last.name != 'filter' )
+					throw 'jsq_parse_assignment: Unexpected \''+operatorToken.data+'\' at position '+operatorToken.index;
+				this.addup('operator').value = operatorToken.data;
+				this.parse();
+				break;
+		}
+		this.up(num);
 	};
 	// A binary is two expressions combined by an arithmetic- or a comparison operator.
 	// Binaries can be chained, where execution precedence is taken into account as per
@@ -636,7 +657,7 @@
 				peek;
 		current.value = this.tokens.current().data;
 		
-		if( (peek = this.tokens.peek()) && peek.data == '[' )
+		if( (peek = this.tokens.peek()) && (peek.data == '[' || peek.data == '.') )
 			this.parse_filter();
 		
 		this.up();
@@ -765,11 +786,7 @@
 		
 		switch( branch.name ) {
 			case 'assignment':
-				_vars[branch.children[1].value] = _expression(input, [], branch.children[0]);
-				if( input instanceof Array )
-					output.push.apply(output, input);
-				else
-					output.push(input);
+				_assignment(input, output, branch.children);
 				break;
 			case 'binary':
 				_binary(input, output, branch);
@@ -817,17 +834,48 @@
 		}
 		return output;
 	}
-	// `all` is always the full input; `input` gets trimmed when this function
-	// is recursing.
-	function _filter( all, input, output, filter ) {
-		var child, i, j, element, key, result;
-		
-		// End of the chain, or filter is a single '.'
-		if( !filter.length ) {
-			input[0] != void(0) && _each(input, function(input) {
+	function _assignment( input, output, children ) {
+		if( children.length == 2 ) {
+			// Value assignment to variable
+			_vars[children[1].value] = _expression(input, [], children[0]);
+			if( input instanceof Array )
+				output.push.apply(output, input);
+			else
 				output.push(input);
-			});
-			return;
+		} else if( children.length == 3 ) {
+			// Value assignment to filter.
+			var op = children[1].value,
+					inputCopy = _copy(input),
+					exp;
+			
+			if( op == '=' ) {
+				// Simple assignment. Take the result from the rhs expression, and assign
+				// it to elements resulting from the lhs filter. Is the rhs expression produces
+				// multiple results, use the last.
+				exp = _expression(input, [], children[2]);
+				if( (exp = exp.pop()) != void(0) ) {
+					_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
+						obj[key] = exp;
+					});
+				}
+				output.push.apply(output, inputCopy);
+			}
+		}
+	}
+	// Interpret a filter.
+	// callback = function( value, key, object ) and is called when the end of a
+	// filter is reached. Caution! This function is called regardless if the value is
+	// actually found. The callback should check for that.
+	// 
+	// `all` is always the full input; `input` is a subset upon recursion.
+	function _filter( all, input, output, filter, callback ) {
+		var child, i, j, element, key, sub;
+		
+		// No callback? Then perform default action: returning found value as result.
+		if( !callback ) {
+			callback = function( val, key, obj ) {
+				val != void(0) && output.push(val);
+			};
 		}
 		
 		filter = filter.slice(0);
@@ -835,48 +883,34 @@
 		for( j=0; j<input.length; j++ ) {
 			element = input[j];
 			
-			if( element instanceof Array ) {
-				if( child.name == 'key_all' ) {
-					// All array elements
-					for( i=0; i<element.length; i++ )
-						_filter(all, [element[i]], output, filter);
-				} else if( child.name == 'number' ) {
-					// Single array element
-					_filter(all, [element[child.value]], output, filter);
-				} else if(
-					child.name == 'binary' &&
-					child.children[1].value == '-' &&
-					child.children[0].value >= 0 &&
-					child.children[2].value >= child.children[0].value
-				) {
-					// TODO: Maybe integrate into Parser to allow more complexity? parse_range()?
-					// 
-					// Iterate range
-					var max = child.children[2].value;
-					if( max > element.length-1 )
-						max = element.length-1;
-					for( i=child.children[0].value; i<=max; i++ ) {
-						_filter(all, [element[i]], output, filter);
-					}
-				} else if ( child.name != 'string' ) {
-					// Every other case: sub-expression
-					var sub = _expression(all, [], child);
-					for( i=0; i<sub.length; i++ )
-						_filter(all, [element[sub[i]]], output, filter);
-				}
-			} else if( element instanceof Object ) {
-				if( child.name == 'key_all' ) {
-					// All object properties
-					for( key in element )
-						_filter(all, [element[key]], output, filter);
-				} else if( child.name == 'number' || child.name == 'string' ) {
-					// Single object property
-					_filter(all, [element[child.value]], output, filter);
-				} else {
-					// Sub-expression
-					var sub = _expression([element], [], child);
-					for( i=0; i<sub.length; i++ )
-						_filter(all, [element[sub[i]]], output, filter);
+			// TODO: `range` as key selector for arrays
+			if( !child ) {
+				callback(element);
+			} else if( child.name == 'key_all' ) {
+				// All elements
+				_each(element, !filter.length ? callback : function( val ) {
+					_filter(all, [val], output, filter, callback);
+				});
+			} else if(
+				element instanceof Array && child.name == 'number' ||
+				!(element instanceof Array ) && element instanceof Object && (
+					child.name == 'number' ||
+					child.name == 'string'
+				)
+			) {
+				// Single element
+				if( !filter.length )
+					callback(element[child.value], child.value, element);
+				else
+					_filter(all, [element[child.value]], output, filter, callback);
+			} else {
+				// Every other case: sub-expression
+				sub = _expression(all, [], child);
+				for( i=0; i<sub.length; i++ ) {
+					if( !filter.length )
+						callback(element[sub[i]], sub[i], element);
+					else
+						_filter(all, [element[sub[i]]], output, filter, callback);
 				}
 			}
 		}
@@ -936,7 +970,7 @@
 	function _variable( input, output, branch ) {
 		var filter;
 		if( filter = branch.children[0] ) {
-			output.push.apply(output, _filter(_vars[branch.value], _vars[branch.value], output, filter.children));
+			_filter(_vars[branch.value], _vars[branch.value], output, filter.children);
 		} else {
 			output.push.apply(output, _vars[branch.value]);
 		}
@@ -998,22 +1032,6 @@
 	
 	// Modules
 	jsq['fn'] = {
-		'avg': function( input, output ) {
-			var ret = 0, length = 0, i;
-			for( i=0; i<input.length; i++ )
-				_avg(input[i]);
-			output.push(ret/length);
-			
-			function _avg( input ) {
-				if( input instanceof Array ) {
-					for( var i=0; i<input.length; i++ )
-						_avg(input[i]);
-				} else {
-					ret += input;
-					length++;
-				}
-			}
-		},
 		'keys': function( input, output ) {
 			_each(input, function( input ) {
 				if( input instanceof Object ) {

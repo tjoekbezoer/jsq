@@ -166,7 +166,7 @@
 		}], 'Non-matching shorthand element definitions are ignored when input is array');
 	});
 	
-	test('executes variable definitions correctly', function() {
+	test('executes variable assignments correctly', function() {
 		eq('1 as $test | $test', [1]);
 		eq('1 as $test | -$test, $test-1, 2-$test, $test+1, 2+$test', [-1,0,1,2,3]);
 		
@@ -174,5 +174,56 @@
 		eq(simple, '("second","third") as $key | .[$key]', [2,3]);
 		eq(complex, '.sixth[] as $key | .[$key]', [1,2]);
 		eq(complex, '.fifth as $obj | $obj["foo"]', ['bar']);
+		eq(complex, '.fifth as $obj | $obj.sub.one', [1]);
+		eq(complex, '.fifth.foo as $obj | $obj', ['bar']);
+	});
+	
+	test('executes value assignment correctly', function() {
+		var input1 = {
+			'first': 1,
+			'second': 2
+		};
+		var input2 = {
+			'first': 1,
+			'second': {
+				'sub1': 2,
+				'sub2': 3
+			}
+		};
+		
+		eq(input1, '.first = 2', [{
+			'first':2,
+			'second': 2
+		}], 'Simple assignment');
+		deepEqual(input1, {
+			'first': 1,
+			'second': 2
+		}, 'Assignments are non-destructive to the original input');
+		eq(input2, '.second.sub1 = 4', [{
+			'first': 1,
+			'second': {
+				'sub1': 4,
+				'sub2': 3
+			}
+		}], 'Assignment on sub-element');
+		deepEqual(input2, {
+			'first': 1,
+			'second': {
+				'sub1': 2,
+				'sub2': 3
+			}
+		}, 'Assignments on sub-elements are non-destructive to the original input');
+		
+		eq(input1, '.[] = 3', [{
+			'first': 3,
+			'second': 3
+		}], 'Assigning multiple elements at once');
+		eq(input2, '.second[] = 4 | .[].sub2 = 5', [{
+			'first': 1,
+			'second': {
+				'sub1': 4,
+				'sub2': 5
+			}
+		}], 'Assigning multiple sub-elements at once');
 	});
 })();
