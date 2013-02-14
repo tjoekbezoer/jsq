@@ -1,0 +1,59 @@
+#!/usr/bin/env node
+
+// gen
+// ===
+// Tool that reads YAML files, and turns them into HTML files using
+// Mustache template files. Using Github flavored Markdown in the YAML
+// files is supported.
+
+var fs = require('fs')
+	, yaml = require('js-yaml')
+	, marked = require('marked')
+	, Mustache = require('mustache');
+
+marked.setOptions({
+	sanitize: true
+});
+
+// Read all files in the ./pages folder, parse them as YAML files, and
+// use the output to parse a Mustache template file with the same name
+// from the ./templates folder. Then write the resulting HTML file to
+// the ./output folder.
+var files = fs.readdirSync('./pages');
+files.forEach(function( fileName ) {
+	var stat = fs.statSync('./pages/'+fileName)
+		, data, _fileName, templateFileName, outputFileName, output;
+	
+	if( stat.isFile() ) {
+		data = markdownize(require('./pages/'+fileName));
+		
+		// Get filename without extension.
+		_fileName = fileName;
+		fileName = fileName.split('.').slice(0,-1).join('.');
+		templateFileName = './templates/'+fileName+'.tpl';
+		outputFileName = './output/'+fileName+'.html';
+		
+		// Parse template and write result.
+		if( fs.existsSync(templateFileName) ) {
+			output = Mustache.render(fs.readFileSync(templateFileName, 'utf8'), data);
+			fs.writeFileSync(outputFileName, output);
+		} else {
+			console.error('YAML file `'+_fileName+'`: template file not found ('+templateFileName+')');
+		}
+	}
+});
+
+// Recursively parse text from the YAML object as markdown.
+function markdownize( obj ) {
+	if( obj instanceof Array ) {
+		for( var i=0; i<obj.length; i++ )
+			obj[i] = markdownize(obj[i]);
+	} else if( obj instanceof Object ) {
+		for( var key in obj ) {
+			obj[key] = markdownize(obj[key]);
+		}
+	} else {
+		return marked(obj);
+	}
+	return obj;
+}
