@@ -5,6 +5,9 @@
 // Tool that reads YAML files, and turns them into HTML files using
 // Mustache template files. Using Github flavored Markdown in the YAML
 // files is supported.
+// 
+// This tool needs the following npm libraries installed locally:
+// js-yaml, marked, mustache
 
 var fs = require('fs')
 	, yaml = require('js-yaml')
@@ -37,6 +40,7 @@ files.forEach(function( fileName ) {
 		if( fs.existsSync(templateFileName) ) {
 			output = Mustache.render(fs.readFileSync(templateFileName, 'utf8'), data);
 			fs.writeFileSync(outputFileName, output);
+			console.log('Generated '+outputFileName);
 		} else {
 			console.error('YAML file `'+_fileName+'`: template file not found ('+templateFileName+')');
 		}
@@ -53,7 +57,7 @@ function markdownize( obj ) {
 			obj[key] = markdownize(obj[key]);
 		}
 	} else {
-		return marked(obj);
+		return typeof obj == 'string' ? marked(obj) : obj;
 	}
 	return obj;
 }
