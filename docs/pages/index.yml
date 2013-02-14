@@ -1,4 +1,864 @@
 headline: jsq Manual
-body: |
+intro: |
 
-  This is the manual.
+  A jsq program is a "filter": it takes an input, and produces an
+  output. There are a lot of builtin filters for extracting a
+  particular field of an object, or converting a number to a string,
+  or various other standard tasks.
+
+  Filters can be combined in various ways — you can pipe the output of
+  one filter into another filter, or collect the output of a filter
+  into an array.
+  
+  Some filters produce multiple results, for instance there's one that
+  produces all the elements of its input array. Piping that filter
+  into a second runs the second filter for each element of the
+  array. Generally, things that would be done with loops and iteration
+  in other languages are just done by gluing filters together in jsq.
+
+  It's important to remember that every filter has an input and an
+  output. Even literals like "hello" or 42 are filters — they take an
+  input but always produce the same literal as output. Operations that
+  combine two filters, like addition, generally feed the same input to
+  both and combine the results. So, you can implement an averaging
+  filter as `add / length` — feeding the input array both to the `add`
+  filter and the `length` filter and dividing the results.
+
+  But that's getting ahead of ourselves. :) Let's start with something
+  simpler:
+
+sections:
+  - title: Invoking jsq
+    body: |
+      
+      Invoke that stuff!
+
+  - title: Basic filters
+    entries:
+      - title: "`.`"
+        body: |
+          
+          The absolute simplest (and least interesting) filter
+          is `.`. This is a filter that takes its input and
+          produces it unchanged as output.
+
+          Since jsq by default pretty-prints all output, this trivial
+          program can be a useful way of formatting JSON output from,
+          say, `curl`.
+
+        examples:
+          - program: '.'
+            input: '"Hello, world!"'
+            output: ['"Hello, world!"']
+
+      - title: "`.foo`"
+        body: |
+          
+          The simplest *useful* filter is .foo. When given a
+          JSON object (aka dictionary or hash) as input, it produces
+          the value at the key "foo", or null if there's none present.
+
+        examples:
+          - program: '.foo'
+            input: '{"foo": 42, "bar": "less interesting data"}'
+            output: '[42]'
+          - program: '.foo'
+            input: '{"notfoo": true, "alsonotfoo": false}'
+            output: "['null']"
+
+      - title: "`.[\"foo\"]`"
+        body: |
+          
+          You can also look up fields of an object using syntax like
+          `.["foo"]` (.foo above is a shorthand version of this). This
+          one works for arrays as well, if the key is an
+          integer. Arrays are zero-based (like javascript), so .[2]
+          returns the third element of the array.
+
+        examples:
+          - program: '.[0]'
+            input: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
+            output: ['{"name":"JSON", "good":true}']
+
+          - program: '.[2]'
+            input: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
+            output: ['null']
+
+      - title: "`.[]`"
+        body: |
+          
+          If you use the `.[foo]` syntax, but omit the index
+          entirely, it will return *all* of the elements of an
+          array. Running `.[]` with the input `[1,2,3]` will produce the
+          numbers as three seperate results, rather than as a single
+          array.
+
+        examples:
+          - program: '.[]'
+            input: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
+            output:
+              - '{"name":"JSON", "good":true}'
+              - '{"name":"XML", "good":false}'
+
+          - program: '.[]'
+            input: '[]'
+            output: []
+
+      - title: "`,`"
+        body: |
+          
+          If two filters are separated by a comma, then the
+          input will be fed into both and there will be multiple
+          outputs: first, all of the outputs produced by the left
+          expression, and then all of the outputs produced by the
+          right. For instance, filter `.foo, .bar`, produces
+          both the "foo" fields and "bar" fields as separate outputs.
+
+        examples:
+          - program: '.foo, .bar'
+            input: '{"foo": 42, "bar": "something else", "baz": true}'
+            output: ['42', '"something else"']
+
+          - program: ".user, .projects[]"
+            input: '{"user":"tjoekbezoer", "projects": ["jsq", "wikiflow"]}'
+            output: ['"tjoekbezoer"', '"jsq"', '"wikiflow"']
+            
+          - program: '.[4,2]'
+            input: '["a","b","c","d","e"]'
+            output: ['"e"', '"c"']
+          
+      - title: "`|`"
+        body: |
+          The | operator combines two filters by feeding the output(s) of
+          the one on the left into the input of the one on the right. It's
+          pretty much the same as the Unix shell's pipe, if you're used to
+          that. 
+
+          If the one on the left produces multiple results, the one on
+          the right will be run for each of those results. So, the
+          expression `.[] | .foo` retrieves the "foo" field of each
+          element of the input array.
+
+        examples:
+          - program: '.[] | .name'
+            input: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
+            output: ['"JSON"', '"XML"']
+
+  - title: Types and Values
+    body: |
+      
+      jsq supports the same set of datatypes as JSON - numbers,
+      strings, booleans, arrays, objects, and "null".
+
+      Booleans, null, strings and numbers are written the same way as
+      in javascript. Just like everything else in jsq, these simple
+      values take an input and produce an output - `42` is a valid jsq
+      expression that takes an input, ignores it, and returns 42
+      instead.
+
+    entries:
+      - title: Array construction - `[]`
+        body: |
+        
+          As in JSON, `[]` is used to construct arrays, as in
+          `[1,2,3]`. The elements of the arrays can be any jsq
+          expression. All of the results produced by all of the
+          expressions are collected into one big array. You can use it
+          to construct an array out of a known quantity of values (as
+          in `[.foo, .bar, .baz]`) or to "collect" all the results of a
+          filter into an array (as in `[.items[].name]`)
+        
+          Once you understand the "," operator, you can look at jsq's array
+          syntax in a different light: the expression [1,2,3] is not using a
+          built-in syntax for comma-separated arrays, but is instead applying
+          the `[]` operator (collect results) to the expression 1,2,3 (which
+          produces three different results).
+
+          If you have a filter `X` that produces four results,
+          then the expression `[X]` will produce a single result, an
+          array of four elements.
+
+        examples:
+          - program: "[.user, .projects[]]"
+            input: '{"user":"tjoekbezoer", "projects": ["jsq", "wikiflow"]}'
+            output: ['["tjoekbezoer", "jsq", "wikiflow"]']
+      - title: Objects - `{}`
+        body: |
+
+          Like JSON, `{}` is for constructing objects (aka
+          dictionaries or hashes), as in: `{"a": 42, "b": 17}`.
+          
+          If the keys are "sensible" (all alphabetic characters), then
+          the quotes can be left off. The value can be any expression
+          (although you may need to wrap it in parentheses if it's a
+          complicated one), which gets applied to the {} expression's
+          input (remember, all filters have an input and an
+          output).
+          
+              {foo: .bar}
+          
+          will produce the JSON object `{"foo": 42}` if given the JSON
+          object `{"bar":42, "baz":43}`. You can use this to select
+          particular fields of an object: if the input is an object
+          with "user", "title", "id", and "content" fields and you
+          just want "user" and "title", you can write
+          
+              {user: .user, title: .title}
+          
+          Because that's so common, there's a shortcut syntax: `{user, title}`.
+          
+          If one of the expressions produces multiple results,
+          multiple dictionaries will be produced. If the input's
+          
+              {"user":"tjoekbezoer","titles":["JSQ Primer", "More JSQ"]}
+          
+          then the expression
+          
+              {user, title: .titles[]}
+          
+          will produce two outputs: 
+          
+              {"user":"tjoekbezoer", "title": "JSQ Primer"}
+              {"user":"tjoekbezoer", "title": "More JSQ"}
+          
+          Putting parentheses around the key means it will be evaluated as an
+          expression. With the same input as above,
+          
+              {(.user): .titles}
+          
+          produces
+          
+              {"tjoekbezoer": ["JSQ Primer", "More JSQ"]}
+              
+        examples:
+          - program: '{user, title: .titles[]}'
+            input: '{"user":"tjoekbezoer","titles":["JSQ Primer", "More JSQ"]}'
+            output:
+              - '{"user":"tjoekbezoer", "title": "JSQ Primer"}'
+              - '{"user":"tjoekbezoer", "title": "More JSQ"}'
+          - program: '{(.user): .titles}'
+            input: '{"user":"tjoekbezoer","titles":["JSQ Primer", "More JSQ"]}'
+            output: ['{"tjoekbezoer": ["JSQ Primer", "More JSQ"]}']
+
+  - title: Builtin operators and functions
+    body: |
+
+      Some jsq operator (for instance, `+`) do different things
+      depending on the type of their arguments (arrays, numbers,
+      etc.). However, jsq never does implicit type conversions. If you
+      try to add a string to an object you'll get an error message and
+      no result.
+      
+    entries:
+      - title: Addition - `+`
+        body: |
+
+          The operator `+` takes two filters, applies them both
+          to the same input, and adds the results together. What
+          "adding" means depends on the types involved:
+
+          - **Numbers** are added by normal arithmetic.
+
+          - **Arrays** are added by being concatenated into a larger array.
+
+          - **Strings** are added by being joined into a larger string.
+          
+          - **Objects** are added by merging, that is, inserting all
+              the key-value pairs from both objects into a single
+              combined object. If both objects contain a value for the
+              same key, the object on the right of the `+` wins.
+          
+          `null` can be added to any value, and returns the other
+          value unchanged.
+
+        examples:
+          - program: '.a + 1'
+            input: '{"a": 7}'
+            output: ['8']
+          - program: '.a + .b'
+            input: '{"a": [1,2], "b": [3,4]}'
+            output: ['[1,2,3,4]']
+          - program: '.a + null'
+            input: '{"a": 1}'
+            output: ['1']
+          - program: '.a + 1'
+            input: '{}'
+            output: ['1']
+          - program: '{a: 1} + {b: 2} + {c: 3} + {a: 42}'
+            input: 'null'
+            output: ['{"a": 42, "b": 2, "c": 3}']
+
+      - title: Subtraction - `-`
+        body: |
+
+          As well as normal arithmetic subtraction on numbers, the `-`
+          operator can be used on arrays to remove all occurences of
+          the second array's elements from the first array.
+
+        examples:
+          - program: '4 - .a'
+            input: '{"a":3}'
+            output: ['1']
+          - program: . - ["xml", "yaml"]
+            input: '["xml", "yaml", "json"]'
+            output: ['["json"]']
+
+      - title: Multiplication, division - `*` and `/`
+        body: |
+
+          These operators only work on numbers, and do the expected.
+
+        examples:
+          - program: '10 / . * 3'
+            input: 5
+            output: [6]
+      
+      - title: "`length`"
+        body: |
+
+          The builtin function `length` gets the length of various
+          different types of value:
+
+          - The length of a **string** is the number of Unicode
+            codepoints it contains (which will be the same as its
+            JSON-encoded length in bytes if it's pure ASCII).
+
+          - The length of an **array** is the number of elements.
+
+          - The length of an **object** is the number of key-value pairs.
+
+          - The length of **null** is zero.
+
+        examples:
+          - program: '.[] | length'
+            input: '[[1,2], "string", {"a":2}, null]'
+            output: [2, 6, 1, 0]
+
+      - title: "`keys`"
+        body: |
+          
+          The builtin function `keys`, when given an object, returns
+          its keys in an array.
+
+          The keys are sorted "alphabetically", by unicode codepoint
+          order. This is not an order that makes particular sense in
+          any particular language, but you can count on it being the
+          same for any two objects with the same set of keys,
+          regardless of locale settings.
+
+          When `keys` is given an array, it returns the valid indices
+          for that array: the integers from 0 to length-1.
+
+        examples:
+          - program: 'keys'
+            input: '{"abc": 1, "abcd": 2, "Foo": 3}'
+            output: ['["Foo", "abc", "abcd"]']
+          - program: 'keys'
+            input: '[42,3,35]'
+            output: ['[0,1,2]']
+
+      - title: "`select`"
+        body: |
+          
+          The function `select(foo)` produces its input unchanged if
+          `foo` returns true for that input, and produces no output
+          otherwise.
+
+          It's useful for filtering lists: `[1,2,3] | map(select(. >= 2))`
+          will give you `[3]`.
+
+        examples:
+          - program: 'map(select(. >= 2))'
+            input: '[1,5,3,0,7]'
+            output: ['[5,3,7]']
+
+      - title: "`empty`"
+        body: |
+          
+          `empty` returns no results. None at all. Not even `null`.
+
+          It's useful on occasion. You'll know if you need it :)
+
+        examples:
+          - program: '1, empty, 2'
+            input: 'null'
+            output: [1, 2]
+          - program: '[1,2,empty,3]'
+            input: 'null'
+            output: ['[1,2,3]']
+
+      - title: "`map(x)`"
+        body: |
+
+          For any filter `x`, `map(x)` will run that filter for each
+          element of the input array, and produce the outputs a new
+          array. `map(.+1)` will increment each element of an array of numbers.
+
+          `map(x)` is equivalent to `[.[] | x]`. In fact, this is how
+          it's defined.
+
+        examples:
+          - program: 'map(.+1)'
+            input: '[1,2,3]'
+            output: ['[2,3,4]']
+
+      - title: "`add`"
+        body: |
+
+          The filter `add` takes as input an array, and produces as
+          output the elements of the array added together. This might
+          mean summed, concatenated or merged depending on the types
+          of the elements of the input array - the rules are the same
+          as those for the `+` operator (described above).
+
+          If the input is an empty array, `add` returns `null`.
+
+        examples:
+          - program: add
+            input: '["a","b","c"]'
+            output: ['"abc"']
+          - program: add
+            input: '[1, 2, 3]'
+            output: [6]
+          - program: add
+            input: '[]'
+            output: ["null"]
+            
+      - title: "`sort, sort_by`"
+        body: |
+          
+          The `sort` functions sorts its input, which must be an
+          array. Values are sorted in the following order:
+
+          * `null`
+          * `false`
+          * `true`
+          * numbers
+          * strings, in alphabetical order (by unicode codepoint value)
+          * arrays, in lexical order
+          * objects
+
+          The ordering for objects is a little complex: first they're
+          compared by comparing their sets of keys (as arrays in
+          sorted order), and if their keys are equal then the values
+          are compared key by key.
+
+          `sort_by` may be used to sort by a particular field of an
+          object, or by applying any jsq filter. `sort_by(foo)`
+          compares two elements by comparing the result of `foo` on
+          each element.
+
+        examples:
+          - program: 'sort'
+            input: '[8,3,null,6]'
+            output: ['[null,3,6,8]']
+          - program: 'sort_by(.foo)'
+            input: '[{"foo":4, "bar":10}, {"foo":3, "bar":100}, {"foo":2, "bar":1}]'
+            output: ['[{"foo":2, "bar":1}, {"foo":3, "bar":100}, {"foo":4, "bar":10}]']
+
+      - title: "`group_by`"
+        body: |
+          
+          `group_by(.foo)` takes as input an array, groups the
+          elements having the same `.foo` field into separate arrays,
+          and produces all of these arrays as elements of a larger
+          array, sorted by the value of the `.foo` field.
+
+          Any jsq expression, not just a field access, may be used in
+          place of `.foo`. The sorting order is the same as described
+          in the `sort` function above.
+
+        examples:
+          - program: 'group_by(.foo)'
+            input: '[{"foo":1, "bar":10}, {"foo":3, "bar":100}, {"foo":1, "bar":1}]'
+            output: ['[[{"foo":1, "bar":10}, {"foo":1, "bar":1}], [{"foo":3, "bar":100}]]']
+
+      - title: "`min`, `max`, `min_by`, `max_by`"
+        body: |
+          
+          Find the minimum or maximum element of the input array. The
+          `_by` versions allow you to specify a particular field or
+          property to examine, e.g. `min_by(.foo)` finds the object
+          with the smallest `foo` field.
+
+        examples:
+          - program: 'min'
+            input: '[5,4,2,7]'
+            output: ['2']
+          - program: 'max_by(.foo)'
+            input: '[{"foo":1, "bar":14}, {"foo":2, "bar":3}]'
+            output: ['{"foo":2, "bar":3}']
+
+      - title: "`unique`"
+        body: |
+          
+          The `unique` function takes as input an array and produces
+          an array of the same elements, in sorted order, with
+          duplicates removed.
+
+        examples:
+          - program: 'unique'
+            input: '[1,2,5,3,5,3,1,3]'
+            output: ['[1,2,3,5]']
+
+      - title: "`recurse`"
+        body: |
+          
+          The `recurse` function allows you to search through a
+          recursive structure, and extract interesting data from all
+          levels. Suppose your input represents a filesystem:
+
+              {"name": "/", "children": [
+                {"name": "/bin", "children": [
+                  {"name": "/bin/ls", "children": []},
+                  {"name": "/bin/sh", "children": []}]},
+                {"name": "/home", "children": [
+                  {"name": "/home/stephen", "children": [
+                    {"name": "/home/stephen/jsq", "children": []}
+                  ]}
+                ]}
+              ]}
+          
+          Now suppose you want to extract all of the filenames
+          present. You need to retrieve `.name`, `.children[].name`,
+          `.children[].children[].name`, and so on. You can do this
+          with:
+
+              recurse(.children[]) | .name
+
+        examples:
+          - program: 'recurse(.foo[])'
+            input: '{"foo":[{"foo": []}, {"foo":[{"foo":[]}]}]}'
+            output: 
+              - '{"foo":[{"foo":[]},{"foo":[{"foo":[]}]}]}'
+              - '{"foo":[]}'
+              - '{"foo":[{"foo":[]}]}'
+              - '{"foo":[]}'
+
+  - title: Conditionals and Comparisons
+    entries:
+      - title: "`==`, `!=`"
+        body: |
+
+          The expression 'a == b' will produce 'true' if the result of a and b
+          are equal (that is, if they represent equivalent JSON documents) and
+          'false' otherwise. In particular, strings are never considered equal
+          to numbers. If you're coming from Javascript, jsq's == is like
+          Javascript's === - considering values equal only when they have the
+          same type as well as the same value.
+          
+          != is "not equal", and 'a != b' returns the opposite value of 'a == b'
+
+        examples:
+          - program: '.[] == 1'
+            input: '[1, 1.0, "1", "banana"]'
+            output: ['true', 'true', 'false', 'false']
+      
+      - title: "`>`, `>=`, `<=`, `<`"
+        body: |
+          
+          The comparison operators `>`, `>=`, `<=`, `<` return whether
+          their left argument is greater than, greater than or equal
+          to, less than or equal to or less than their right argument
+          (respectively).
+
+          The ordering is the same as that described for `sort`, above.
+
+        examples:
+          - program: '. < 5'
+            input: 2
+            output: ['true']
+      
+      - title: if(cond, then, else)
+        body: |
+
+          `if A then B else C end` will act the same as `B` if `A`
+          produces a value other than false or null, but act the same
+          as `C` otherwise.
+          
+          Checking for false or null is a simpler notion of
+          "truthiness" than is found in Javascript or Python, but it
+          means that you'll sometimes have to be more explicit about
+          the condition you want: you can't test whether, e.g. a
+          string is empty using `if .name then A else B end`, you'll
+          need something more like `if (.name | count) > 0 then A else
+          B end` instead.
+          
+          If the condition A produces multiple results, it is
+          considered "true" if any of those results is not false or
+          null. If it produces zero results, it's considered false.
+          
+          More cases can be added to an if using `elif A then B` syntax.
+
+        examples:
+          - program: |-
+              if . == 0 then
+                "zero"
+              elif . == 1 then
+                "one"
+              else
+                "many"
+              end
+            input: 2
+            output: ['"many"']
+      
+      - title: "`&&`, `||`"
+        body: |
+
+          jsq supports the normal Boolean operators and/or/not. They have the
+          same standard of truth as if expressions - false and null are
+          considered "false values", and anything else is a "true value".
+
+          If an operand of one of these operators produces multiple
+          results, the operator itself will produce a result for each input.
+
+          `not` is in fact a builtin function rather than an operator,
+          so it is called as a filter to which things can be piped
+          rather than with special syntax, as in `.foo and .bar |
+          not`.
+          
+          These three only produce the values "true" and "false", and
+          so are only useful for genuine Boolean operations, rather
+          than the common Perl/Python/Ruby idiom of
+          "value_that_may_be_null or default". If you want to use this
+          form of "or", picking between two values rather than
+          evaluating a condition, see the "//" operator below.
+          
+        examples:
+          - program: '42 and "a string"'
+            input: 'null'
+            output: ['true']
+          - program: '(true, false) or false'
+            input: 'null'
+            output: ['true', 'false']
+          - program: '(true, false) and (true, false)'
+            input: 'null'
+            output: ['true', 'false', 'false', 'false']
+          - program: '[true, false | not]'
+            input: 'null'
+            output: ['[false, true]']
+  
+  - title: Advanced features
+    body: |
+      Variables are an absolute necessity in most programming languages, but
+      they're relegated to an "advanced feature" in jsq.
+
+      In most languages, variables are the only means of passing around
+      data. If you calculate a value, and you want to use it more than once,
+      you'll need to store it in a variable. To pass a value to another part
+      of the program, you'll need that part of the program to define a
+      variable (as a function parameter, object member, or whatever) in
+      which to place the data.
+
+      It is also possible to define functions in jsq, although this is
+      is a feature whose biggest use is defining jsq's standard library
+      (many jsq functions such as `map` and `find` are in fact written
+      in jsq).
+
+      Finally, jsq has a `fold` operation, which is very powerful but a
+      bit tricky. Again, it's mostly used internally, to define some
+      useful bits of jsq's standard library.
+
+    entries:
+      - title: Variables
+        body: |
+          
+          In jsq, all filters have an input and an output, so manual
+          plumbing is not necessary to pass a value from one part of a program
+          to the next. Many expressions, for instance `a + b`, pass their input
+          to two distinct subexpressions (here `a` and `b` are both passed the
+          same input), so variables aren't usually necessary in order to use a
+          value twice.
+          
+          For instance, calculating the average value of an array of numbers
+          requires a few variables in most languages - at least one to hold the
+          array, perhaps one for each element or for a loop counter. In jsq, it's
+          simply `add / length` - the `add` expression is given the array and
+          produces its sum, and the `length` expression is given the array and
+          produces its length.
+          
+          So, there's generally a cleaner way to solve most problems in jsq that
+          defining variables. Still, sometimes they do make things easier, so jsq
+          lets you define variables using `expression as $variable`. All
+          variable names start with `$`. Here's a slightly uglier version of the
+          array-averaging example:
+          
+              length as $array_length | add / $array_length
+          
+          We'll need a more complicated problem to find a situation where using
+          variables actually makes our lives easier.
+          
+          
+          Suppose we have an array of blog posts, with "author" and "title"
+          fields, and another object which is used to map author usernames to
+          real names. Our input looks like:
+          
+              {"posts": [{"title": "Frist psot", "author": "anon"},
+                         {"title": "A well-written article", "author": "person1"}],
+               "realnames": {"anon": "Anonymous Coward",
+                             "person1": "Person McPherson"}}
+          
+          We want to produce the posts with the author field containing a real
+          name, as in:
+          
+              {"title": "Frist psot", "author": "Anonymous Coward"}
+              {"title": "A well-written article", "author": "Person McPherson"}
+          
+          We use a variable, $names, to store the realnames object, so that we
+          can refer to it later when looking up author usernames:
+          
+              .realnames as $names | .posts[] | {title, author: $names[.author]}
+          
+          The expression "foo as $x" runs foo, puts the result in $x,
+          and returns the original input. Apart from the side-effect
+          of binding the variable, it has the same effect as ".".
+
+        examples:
+          - program: '.bar as $x | .foo | . + $x'
+            input: '{"foo":10, "bar":200}'
+            output: ['210']
+
+      - title: Fold
+        body: |
+        
+          The `fold` syntax in jsq allows you to combine all of the
+          results of an expression by accumulating them into a single
+          answer. As an example, we'll pass `[3,2,1]` to this expression:
+
+              fold 0 as $sum (.[] | $sum + .)
+          
+          The variable `$sum` is first given the value `0`. The body
+          of the fold (i.e. `.[] | $sum + .`) is evaluated. `.[]`
+          produces three results, `3`, `2`, and `1`. For the first
+          one, `$sum + .` gives `3`.
+
+          Having produced this answer, jsq backtracks to find the next
+          result as per usual. However, this time, `$sum` is set to
+          the previous value of the body, so `$sum + .` gives
+          `5`. After the final backtracking, `$sum + .` gives
+          `6`. This final value is used as the value of the entire
+          `fold` expression, so the above filter returns `6`.
+
+          More formally, in order to evaluate `fold INIT as $VAR
+          (BODY)`, jsq first sets `$VAR` to the value of `INIT`. It
+          then runs through `BODY`. Each time `BODY` produces a value,
+          `$VAR` is set to that value and jsq backtracks to find the
+          next one. When `BODY` stops producing values, the final
+          value of `$VAR` is the result of the entire expression.
+
+        examples:
+          - program: 'fold 0 as $sum (.[] | $sum + .)'
+            input: '[10,2,5,3]'
+            output: ['20']
+      
+
+  - title: Assignment
+    body: |
+
+      Assignment works a little differently in jsq than in most
+      programming languages. jsq doesn't distinguish between references
+      to and copies of something - two objects or arrays are either
+      equal or not equal, without any further notion of being "the
+      same object" or "not the same object".
+
+      If an object has two fields which are arrays, `.foo` and `.bar`,
+      and you append something to `.foo`, then `.bar` will not get
+      bigger. Even if you've just set `.bar = .foo`. If you're used to
+      programming in languages like Python, Java, Ruby, Javascript,
+      etc. then you can think of it as though jsq does a full deep copy
+      of every object before it does the assignment (for performance,
+      it doesn't actually do that, but that's the general idea).
+
+    entries:
+      - title: "`=`"
+        body: |
+          
+          The filter `.foo = 1` will take as input an object
+          and produce as output an object with the "foo" field set to
+          1. There is no notion of "modifying" or "changing" something
+          in jsq - all jsq values are immutable. For instance,
+          
+           .foo = .bar | .foo.baz = 1
+          
+          will not have the side-effect of setting .bar.baz to be set
+          to 1, as the similar-looking program in Javascript, Python,
+          Ruby or other languages would. Unlike these languages (but
+          like Haskell and some other functional languages), there is
+          no notion of two arrays or objects being "the same array" or
+          "the same object". They can be equal, or not equal, but if
+          we change one of them in no circumstances will the other
+          change behind our backs.
+          
+          This means that it's impossible to build circular values in
+          jsq (such as an array whose first element is itself). This is
+          quite intentional, and ensures that anything a jsq program
+          can produce can be represented in JSON.
+
+      - title: "`|=`"
+        body: |
+          As well as the assignment operator '=', jsq provides the "update"
+          operator '|=', which takes a filter on the right-hand side and
+          works out the new value for the property being assigned to by running
+          the old value through this expression. For instance, .foo |= .+1 will
+          build an object with the "foo" field set to the input's "foo" plus 1.
+          
+          This example should show the difference between '=' and '|=':
+          
+          Provide input '{"a": {"b": 10}, "b": 20}' to the programs:
+          
+          .a = .b  
+          .a |= .b
+          
+          The former will set the "a" field of the input to the "b" field of the
+          input, and produce the output {"a": 20}. The latter will set the "a"
+          field of the input to the "a" field's "b" field, producing {"a": 10}.
+
+      - title: "`+=`, `-=`, `*=`, `/=`, `//=`"
+        body: |
+
+          jsq has a few operators of the form `a op= b`, which are all
+          equivalent to `a |= . op b`. So, `+= 1` can be used to increment values.
+
+        examples:
+          - program: .foo += 1
+            input: '{"foo": 42}'
+            output: ['{"foo": 43}']
+        
+      - title: Complex assignments
+        body: |
+          Lots more things are allowed on the left-hand side of a jsq assignment
+          than in most langauges. We've already seen simple field accesses on
+          the left hand side, and it's no surprise that array accesses work just
+          as well:
+          
+              .posts[0].title = "JSQ Manual"
+          
+          What may come as a surprise is that the expression on the left may
+          produce multiple results, referring to different points in the input
+          document:
+          
+              .posts[].comments |= . + ["this is great"]
+          
+          That example appends the string "this is great" to the "comments"
+          array of each post in the input (where the input is an object with a
+          field "posts" which is an array of posts).
+          
+          When jsq encounters an assignment like 'a = b', it records the "path"
+          taken to select a part of the input document while executing a. This
+          path is then used to find which part of the input to change while
+          executing the assignment. Any filter may be used on the
+          left-hand side of an equals - whichever paths it selects from the
+          input will be where the assignment is performed.
+          
+          This is a very powerful operation. Suppose we wanted to add a comment
+          to blog posts, using the same "blog" input above. This time, we only
+          want to comment on the posts written by "tjoekbezoer". We can find those
+          posts using the "select" function described earlier:
+          
+              .posts[] | select(.author == "tjoekbezoer")
+          
+          The paths provided by this operation point to each of the posts that
+          "tjoekbezoer" wrote, and we can comment on each of them in the same way
+          that we did before:
+          
+              (.posts[] | select(.author == "tjoekbezoer") | .comments) |= . + ["terrible."]
