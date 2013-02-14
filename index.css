@@ -1,0 +1,84 @@
+html, body {
+	background-color: #DDDEE1;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+}
+
+#all {
+	background-color: #FFF;
+	box-shadow: 0px 0px 20px 4px rgba(0,0,0,0.4);
+	margin: 0px auto;
+	padding: 20px 50px;
+	width: 700px;
+	
+	font-family: Georgia;
+	font-size: 1em;
+	line-height: 1.5em;
+}
+
+#header {
+	background-color: #201437;
+	height: 300px;
+	margin: 20px -50px;
+}
+
+#all h1,
+#all h2,
+#all h3 {
+	font-family: Helvetica;
+	font-weight: normal;
+}
+#all h2 {
+	font-size: 2em;
+	margin-top: 4em;
+}
+#all h3 {
+	font-weight: normal;
+	font-size: 1.4em;
+	margin-top: 2.5em;
+}
+
+#all h1 p,
+#all h2 p,
+#all h3 p {
+	margin: 0;
+}
+	#all h3 code {
+		border: 0;
+		border-radius: 0;
+		font-weight: normal;
+		/*font-size: 0.8em;*/
+		padding: 3px 4px;
+	}
+
+section {
+	
+}
+	section p {
+		margin: 1em 0;
+	}
+
+pre,
+code {
+	background-color: whitesmoke;
+	border: 1px solid rgba(0,0,0,0.15);
+	border-radius: 4px;
+	padding: 10px 10px;
+}
+code {
+	color: crimson;
+	font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+	/*font-size: 12px;*/
+	font-size: 0.75em;
+	padding: 2px 4px;
+	white-space: nowrap;
+}
+	pre code {
+		background-color: transparent;
+		border: 0;
+		border-radius: 0;
+		color: inherit;
+		white-space: pre-wrap;
+	}

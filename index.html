@@ -1,9 +1,626 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>JSQ</title>
+	<title>jsq - JSON Wrangler</title>
+	
+	<meta http-equiv="content-type" content="text/html; charset=utf-8">
+	<link rel="stylesheet" type="text/css" href="index.css">
 </head>
 <body>
-  Welcome!
+	<div id="all">
+		<div id="header"></div>
+		
+		<p>A jsq program is a &quot;filter&quot;: it takes an input, and produces an
+output. There are a lot of builtin filters for extracting a
+particular field of an object, or converting a number to a string,
+or various other standard tasks.</p>
+<p>Filters can be combined in various ways — you can pipe the output of
+one filter into another filter, or collect the output of a filter
+into an array.</p>
+<p>Some filters produce multiple results, for instance there&#39;s one that
+produces all the elements of its input array. Piping that filter
+into a second runs the second filter for each element of the
+array. Generally, things that would be done with loops and iteration
+in other languages are just done by gluing filters together in jsq.</p>
+<p>It&#39;s important to remember that every filter has an input and an
+output. Even literals like &quot;hello&quot; or 42 are filters — they take an
+input but always produce the same literal as output. Operations that
+combine two filters, like addition, generally feed the same input to
+both and combine the results. So, you can implement an averaging
+filter as <code>add / length</code> — feeding the input array both to the <code>add</code>
+filter and the <code>length</code> filter and dividing the results.</p>
+<p>But that&#39;s getting ahead of ourselves. :) Let&#39;s start with something
+simpler:</p>
+
+		
+		<section>
+			<h2><p>Invoking jsq</p>
+</h2>
+			<p>Invoke that stuff!</p>
+
+			
+		</section>
+		<section>
+			<h2><p>Basic filters</p>
+</h2>
+			
+			
+			<div>
+				<h3><p><code>.</code></p>
+</h3>
+				<p>The absolute simplest (and least interesting) filter
+is <code>.</code>. This is a filter that takes its input and
+produces it unchanged as output.</p>
+<p>Since jsq by default pretty-prints all output, this trivial
+program can be a useful way of formatting JSON output from,
+say, <code>curl</code>.</p>
+
+			</div>
+			<div>
+				<h3><p><code>.foo</code></p>
+</h3>
+				<p>The simplest <em>useful</em> filter is .foo. When given a
+JSON object (aka dictionary or hash) as input, it produces
+the value at the key &quot;foo&quot;, or null if there&#39;s none present.</p>
+
+			</div>
+			<div>
+				<h3><p><code>.[&quot;foo&quot;]</code></p>
+</h3>
+				<p>You can also look up fields of an object using syntax like
+<code>.[&quot;foo&quot;]</code> (.foo above is a shorthand version of this). This
+one works for arrays as well, if the key is an
+integer. Arrays are zero-based (like javascript), so .[2]
+returns the third element of the array.</p>
+
+			</div>
+			<div>
+				<h3><p><code>.[]</code></p>
+</h3>
+				<p>If you use the <code>.[foo]</code> syntax, but omit the index
+entirely, it will return <em>all</em> of the elements of an
+array. Running <code>.[]</code> with the input <code>[1,2,3]</code> will produce the
+numbers as three seperate results, rather than as a single
+array.</p>
+
+			</div>
+			<div>
+				<h3><p><code>,</code></p>
+</h3>
+				<p>If two filters are separated by a comma, then the
+input will be fed into both and there will be multiple
+outputs: first, all of the outputs produced by the left
+expression, and then all of the outputs produced by the
+right. For instance, filter <code>.foo, .bar</code>, produces
+both the &quot;foo&quot; fields and &quot;bar&quot; fields as separate outputs.</p>
+
+			</div>
+			<div>
+				<h3><p><code>|</code></p>
+</h3>
+				<p>The | operator combines two filters by feeding the output(s) of
+the one on the left into the input of the one on the right. It&#39;s
+pretty much the same as the Unix shell&#39;s pipe, if you&#39;re used to
+that. </p>
+<p>If the one on the left produces multiple results, the one on
+the right will be run for each of those results. So, the
+expression <code>.[] | .foo</code> retrieves the &quot;foo&quot; field of each
+element of the input array.</p>
+
+			</div>
+		</section>
+		<section>
+			<h2><p>Types and Values</p>
+</h2>
+			<p>jsq supports the same set of datatypes as JSON - numbers,
+strings, booleans, arrays, objects, and &quot;null&quot;.</p>
+<p>Booleans, null, strings and numbers are written the same way as
+in javascript. Just like everything else in jsq, these simple
+values take an input and produce an output - <code>42</code> is a valid jsq
+expression that takes an input, ignores it, and returns 42
+instead.</p>
+
+			
+			<div>
+				<h3><p>Array construction - <code>[]</code></p>
+</h3>
+				<p>As in JSON, <code>[]</code> is used to construct arrays, as in
+<code>[1,2,3]</code>. The elements of the arrays can be any jsq
+expression. All of the results produced by all of the
+expressions are collected into one big array. You can use it
+to construct an array out of a known quantity of values (as
+in <code>[.foo, .bar, .baz]</code>) or to &quot;collect&quot; all the results of a
+filter into an array (as in <code>[.items[].name]</code>)</p>
+<p>Once you understand the &quot;,&quot; operator, you can look at jsq&#39;s array
+syntax in a different light: the expression [1,2,3] is not using a
+built-in syntax for comma-separated arrays, but is instead applying
+the <code>[]</code> operator (collect results) to the expression 1,2,3 (which
+produces three different results).</p>
+<p>If you have a filter <code>X</code> that produces four results,
+then the expression <code>[X]</code> will produce a single result, an
+array of four elements.</p>
+
+			</div>
+			<div>
+				<h3><p>Objects - <code>{}</code></p>
+</h3>
+				<p>Like JSON, <code>{}</code> is for constructing objects (aka
+dictionaries or hashes), as in: <code>{&quot;a&quot;: 42, &quot;b&quot;: 17}</code>.</p>
+<p>If the keys are &quot;sensible&quot; (all alphabetic characters), then
+the quotes can be left off. The value can be any expression
+(although you may need to wrap it in parentheses if it&#39;s a
+complicated one), which gets applied to the {} expression&#39;s
+input (remember, all filters have an input and an
+output).</p>
+<pre><code>{foo: .bar}</code></pre>
+<p>will produce the JSON object <code>{&quot;foo&quot;: 42}</code> if given the JSON
+object <code>{&quot;bar&quot;:42, &quot;baz&quot;:43}</code>. You can use this to select
+particular fields of an object: if the input is an object
+with &quot;user&quot;, &quot;title&quot;, &quot;id&quot;, and &quot;content&quot; fields and you
+just want &quot;user&quot; and &quot;title&quot;, you can write</p>
+<pre><code>{user: .user, title: .title}</code></pre>
+<p>Because that&#39;s so common, there&#39;s a shortcut syntax: <code>{user, title}</code>.</p>
+<p>If one of the expressions produces multiple results,
+multiple dictionaries will be produced. If the input&#39;s</p>
+<pre><code>{&quot;user&quot;:&quot;tjoekbezoer&quot;,&quot;titles&quot;:[&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</code></pre>
+<p>then the expression</p>
+<pre><code>{user, title: .titles[]}</code></pre>
+<p>will produce two outputs: </p>
+<pre><code>{&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;title&quot;: &quot;JSQ Primer&quot;}
+{&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;title&quot;: &quot;More JSQ&quot;}</code></pre>
+<p>Putting parentheses around the key means it will be evaluated as an
+expression. With the same input as above,</p>
+<pre><code>{(.user): .titles}</code></pre>
+<p>produces</p>
+<pre><code>{&quot;tjoekbezoer&quot;: [&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</code></pre>
+
+			</div>
+		</section>
+		<section>
+			<h2><p>Builtin operators and functions</p>
+</h2>
+			<p>Some jsq operator (for instance, <code>+</code>) do different things
+depending on the type of their arguments (arrays, numbers,
+etc.). However, jsq never does implicit type conversions. If you
+try to add a string to an object you&#39;ll get an error message and
+no result.</p>
+
+			
+			<div>
+				<h3><p>Addition - <code>+</code></p>
+</h3>
+				<p>The operator <code>+</code> takes two filters, applies them both
+to the same input, and adds the results together. What
+&quot;adding&quot; means depends on the types involved:</p>
+<ul>
+<li><p><strong>Numbers</strong> are added by normal arithmetic.</p>
+</li>
+<li><p><strong>Arrays</strong> are added by being concatenated into a larger array.</p>
+</li>
+<li><p><strong>Strings</strong> are added by being joined into a larger string.</p>
+</li>
+<li><p><strong>Objects</strong> are added by merging, that is, inserting all
+  the key-value pairs from both objects into a single
+  combined object. If both objects contain a value for the
+  same key, the object on the right of the <code>+</code> wins.</p>
+</li>
+</ul>
+<p><code>null</code> can be added to any value, and returns the other
+value unchanged.</p>
+
+			</div>
+			<div>
+				<h3><p>Subtraction - <code>-</code></p>
+</h3>
+				<p>As well as normal arithmetic subtraction on numbers, the <code>-</code>
+operator can be used on arrays to remove all occurences of
+the second array&#39;s elements from the first array.</p>
+
+			</div>
+			<div>
+				<h3><p>Multiplication, division - <code>*</code> and <code>/</code></p>
+</h3>
+				<p>These operators only work on numbers, and do the expected.</p>
+
+			</div>
+			<div>
+				<h3><p><code>length</code></p>
+</h3>
+				<p>The builtin function <code>length</code> gets the length of various
+different types of value:</p>
+<ul>
+<li><p>The length of a <strong>string</strong> is the number of Unicode
+codepoints it contains (which will be the same as its
+JSON-encoded length in bytes if it&#39;s pure ASCII).</p>
+</li>
+<li><p>The length of an <strong>array</strong> is the number of elements.</p>
+</li>
+<li><p>The length of an <strong>object</strong> is the number of key-value pairs.</p>
+</li>
+<li><p>The length of <strong>null</strong> is zero.</p>
+</li>
+</ul>
+
+			</div>
+			<div>
+				<h3><p><code>keys</code></p>
+</h3>
+				<p>The builtin function <code>keys</code>, when given an object, returns
+its keys in an array.</p>
+<p>The keys are sorted &quot;alphabetically&quot;, by unicode codepoint
+order. This is not an order that makes particular sense in
+any particular language, but you can count on it being the
+same for any two objects with the same set of keys,
+regardless of locale settings.</p>
+<p>When <code>keys</code> is given an array, it returns the valid indices
+for that array: the integers from 0 to length-1.</p>
+
+			</div>
+			<div>
+				<h3><p><code>select</code></p>
+</h3>
+				<p>The function <code>select(foo)</code> produces its input unchanged if
+<code>foo</code> returns true for that input, and produces no output
+otherwise.</p>
+<p>It&#39;s useful for filtering lists: <code>[1,2,3] | map(select(. &gt;= 2))</code>
+will give you <code>[3]</code>.</p>
+
+			</div>
+			<div>
+				<h3><p><code>empty</code></p>
+</h3>
+				<p><code>empty</code> returns no results. None at all. Not even <code>null</code>.</p>
+<p>It&#39;s useful on occasion. You&#39;ll know if you need it :)</p>
+
+			</div>
+			<div>
+				<h3><p><code>map(x)</code></p>
+</h3>
+				<p>For any filter <code>x</code>, <code>map(x)</code> will run that filter for each
+element of the input array, and produce the outputs a new
+array. <code>map(.+1)</code> will increment each element of an array of numbers.</p>
+<p><code>map(x)</code> is equivalent to <code>[.[] | x]</code>. In fact, this is how
+it&#39;s defined.</p>
+
+			</div>
+			<div>
+				<h3><p><code>add</code></p>
+</h3>
+				<p>The filter <code>add</code> takes as input an array, and produces as
+output the elements of the array added together. This might
+mean summed, concatenated or merged depending on the types
+of the elements of the input array - the rules are the same
+as those for the <code>+</code> operator (described above).</p>
+<p>If the input is an empty array, <code>add</code> returns <code>null</code>.</p>
+
+			</div>
+			<div>
+				<h3><p><code>sort, sort_by</code></p>
+</h3>
+				<p>The <code>sort</code> functions sorts its input, which must be an
+array. Values are sorted in the following order:</p>
+<ul>
+<li><code>null</code></li>
+<li><code>false</code></li>
+<li><code>true</code></li>
+<li>numbers</li>
+<li>strings, in alphabetical order (by unicode codepoint value)</li>
+<li>arrays, in lexical order</li>
+<li>objects</li>
+</ul>
+<p>The ordering for objects is a little complex: first they&#39;re
+compared by comparing their sets of keys (as arrays in
+sorted order), and if their keys are equal then the values
+are compared key by key.</p>
+<p><code>sort_by</code> may be used to sort by a particular field of an
+object, or by applying any jsq filter. <code>sort_by(foo)</code>
+compares two elements by comparing the result of <code>foo</code> on
+each element.</p>
+
+			</div>
+			<div>
+				<h3><p><code>group_by</code></p>
+</h3>
+				<p><code>group_by(.foo)</code> takes as input an array, groups the
+elements having the same <code>.foo</code> field into separate arrays,
+and produces all of these arrays as elements of a larger
+array, sorted by the value of the <code>.foo</code> field.</p>
+<p>Any jsq expression, not just a field access, may be used in
+place of <code>.foo</code>. The sorting order is the same as described
+in the <code>sort</code> function above.</p>
+
+			</div>
+			<div>
+				<h3><p><code>min</code>, <code>max</code>, <code>min_by</code>, <code>max_by</code></p>
+</h3>
+				<p>Find the minimum or maximum element of the input array. The
+<code>_by</code> versions allow you to specify a particular field or
+property to examine, e.g. <code>min_by(.foo)</code> finds the object
+with the smallest <code>foo</code> field.</p>
+
+			</div>
+			<div>
+				<h3><p><code>unique</code></p>
+</h3>
+				<p>The <code>unique</code> function takes as input an array and produces
+an array of the same elements, in sorted order, with
+duplicates removed.</p>
+
+			</div>
+			<div>
+				<h3><p><code>recurse</code></p>
+</h3>
+				<p>The <code>recurse</code> function allows you to search through a
+recursive structure, and extract interesting data from all
+levels. Suppose your input represents a filesystem:</p>
+<pre><code>{&quot;name&quot;: &quot;/&quot;, &quot;children&quot;: [
+  {&quot;name&quot;: &quot;/bin&quot;, &quot;children&quot;: [
+    {&quot;name&quot;: &quot;/bin/ls&quot;, &quot;children&quot;: []},
+    {&quot;name&quot;: &quot;/bin/sh&quot;, &quot;children&quot;: []}]},
+  {&quot;name&quot;: &quot;/home&quot;, &quot;children&quot;: [
+    {&quot;name&quot;: &quot;/home/stephen&quot;, &quot;children&quot;: [
+      {&quot;name&quot;: &quot;/home/stephen/jsq&quot;, &quot;children&quot;: []}
+    ]}
+  ]}
+]}</code></pre>
+<p>Now suppose you want to extract all of the filenames
+present. You need to retrieve <code>.name</code>, <code>.children[].name</code>,
+<code>.children[].children[].name</code>, and so on. You can do this
+with:</p>
+<pre><code>recurse(.children[]) | .name</code></pre>
+
+			</div>
+		</section>
+		<section>
+			<h2><p>Conditionals and Comparisons</p>
+</h2>
+			
+			
+			<div>
+				<h3><p><code>==</code>, <code>!=</code></p>
+</h3>
+				<p>The expression &#39;a == b&#39; will produce &#39;true&#39; if the result of a and b
+are equal (that is, if they represent equivalent JSON documents) and
+&#39;false&#39; otherwise. In particular, strings are never considered equal
+to numbers. If you&#39;re coming from Javascript, jsq&#39;s == is like
+Javascript&#39;s === - considering values equal only when they have the
+same type as well as the same value.</p>
+<p>!= is &quot;not equal&quot;, and &#39;a != b&#39; returns the opposite value of &#39;a == b&#39;</p>
+
+			</div>
+			<div>
+				<h3><p><code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code></p>
+</h3>
+				<p>The comparison operators <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code> return whether
+their left argument is greater than, greater than or equal
+to, less than or equal to or less than their right argument
+(respectively).</p>
+<p>The ordering is the same as that described for <code>sort</code>, above.</p>
+
+			</div>
+			<div>
+				<h3><p>if(cond, then, else)</p>
+</h3>
+				<p><code>if A then B else C end</code> will act the same as <code>B</code> if <code>A</code>
+produces a value other than false or null, but act the same
+as <code>C</code> otherwise.</p>
+<p>Checking for false or null is a simpler notion of
+&quot;truthiness&quot; than is found in Javascript or Python, but it
+means that you&#39;ll sometimes have to be more explicit about
+the condition you want: you can&#39;t test whether, e.g. a
+string is empty using <code>if .name then A else B end</code>, you&#39;ll
+need something more like <code>if (.name | count) &gt; 0 then A else
+B end</code> instead.</p>
+<p>If the condition A produces multiple results, it is
+considered &quot;true&quot; if any of those results is not false or
+null. If it produces zero results, it&#39;s considered false.</p>
+<p>More cases can be added to an if using <code>elif A then B</code> syntax.</p>
+
+			</div>
+			<div>
+				<h3><p><code>&amp;&amp;</code>, <code>||</code></p>
+</h3>
+				<p>jsq supports the normal Boolean operators and/or/not. They have the
+same standard of truth as if expressions - false and null are
+considered &quot;false values&quot;, and anything else is a &quot;true value&quot;.</p>
+<p>If an operand of one of these operators produces multiple
+results, the operator itself will produce a result for each input.</p>
+<p><code>not</code> is in fact a builtin function rather than an operator,
+so it is called as a filter to which things can be piped
+rather than with special syntax, as in <code>.foo and .bar |
+not</code>.</p>
+<p>These three only produce the values &quot;true&quot; and &quot;false&quot;, and
+so are only useful for genuine Boolean operations, rather
+than the common Perl/Python/Ruby idiom of
+&quot;value_that_may_be_null or default&quot;. If you want to use this
+form of &quot;or&quot;, picking between two values rather than
+evaluating a condition, see the &quot;//&quot; operator below.</p>
+
+			</div>
+		</section>
+		<section>
+			<h2><p>Advanced features</p>
+</h2>
+			<p>Variables are an absolute necessity in most programming languages, but
+they&#39;re relegated to an &quot;advanced feature&quot; in jsq.</p>
+<p>In most languages, variables are the only means of passing around
+data. If you calculate a value, and you want to use it more than once,
+you&#39;ll need to store it in a variable. To pass a value to another part
+of the program, you&#39;ll need that part of the program to define a
+variable (as a function parameter, object member, or whatever) in
+which to place the data.</p>
+<p>It is also possible to define functions in jsq, although this is
+is a feature whose biggest use is defining jsq&#39;s standard library
+(many jsq functions such as <code>map</code> and <code>find</code> are in fact written
+in jsq).</p>
+<p>Finally, jsq has a <code>fold</code> operation, which is very powerful but a
+bit tricky. Again, it&#39;s mostly used internally, to define some
+useful bits of jsq&#39;s standard library.</p>
+
+			
+			<div>
+				<h3><p>Variables</p>
+</h3>
+				<p>In jsq, all filters have an input and an output, so manual
+plumbing is not necessary to pass a value from one part of a program
+to the next. Many expressions, for instance <code>a + b</code>, pass their input
+to two distinct subexpressions (here <code>a</code> and <code>b</code> are both passed the
+same input), so variables aren&#39;t usually necessary in order to use a
+value twice.</p>
+<p>For instance, calculating the average value of an array of numbers
+requires a few variables in most languages - at least one to hold the
+array, perhaps one for each element or for a loop counter. In jsq, it&#39;s
+simply <code>add / length</code> - the <code>add</code> expression is given the array and
+produces its sum, and the <code>length</code> expression is given the array and
+produces its length.</p>
+<p>So, there&#39;s generally a cleaner way to solve most problems in jsq that
+defining variables. Still, sometimes they do make things easier, so jsq
+lets you define variables using <code>expression as $variable</code>. All
+variable names start with <code>$</code>. Here&#39;s a slightly uglier version of the
+array-averaging example:</p>
+<pre><code>length as $array_length | add / $array_length</code></pre>
+<p>We&#39;ll need a more complicated problem to find a situation where using
+variables actually makes our lives easier.</p>
+<p>Suppose we have an array of blog posts, with &quot;author&quot; and &quot;title&quot;
+fields, and another object which is used to map author usernames to
+real names. Our input looks like:</p>
+<pre><code>{&quot;posts&quot;: [{&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;anon&quot;},
+           {&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;person1&quot;}],
+ &quot;realnames&quot;: {&quot;anon&quot;: &quot;Anonymous Coward&quot;,
+               &quot;person1&quot;: &quot;Person McPherson&quot;}}</code></pre>
+<p>We want to produce the posts with the author field containing a real
+name, as in:</p>
+<pre><code>{&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;Anonymous Coward&quot;}
+{&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;Person McPherson&quot;}</code></pre>
+<p>We use a variable, $names, to store the realnames object, so that we
+can refer to it later when looking up author usernames:</p>
+<pre><code>.realnames as $names | .posts[] | {title, author: $names[.author]}</code></pre>
+<p>The expression &quot;foo as $x&quot; runs foo, puts the result in $x,
+and returns the original input. Apart from the side-effect
+of binding the variable, it has the same effect as &quot;.&quot;.</p>
+
+			</div>
+			<div>
+				<h3><p>Fold</p>
+</h3>
+				<p>The <code>fold</code> syntax in jsq allows you to combine all of the
+results of an expression by accumulating them into a single
+answer. As an example, we&#39;ll pass <code>[3,2,1]</code> to this expression:</p>
+<pre><code>fold 0 as $sum (.[] | $sum + .)</code></pre>
+<p>The variable <code>$sum</code> is first given the value <code>0</code>. The body
+of the fold (i.e. <code>.[] | $sum + .</code>) is evaluated. <code>.[]</code>
+produces three results, <code>3</code>, <code>2</code>, and <code>1</code>. For the first
+one, <code>$sum + .</code> gives <code>3</code>.</p>
+<p>Having produced this answer, jsq backtracks to find the next
+result as per usual. However, this time, <code>$sum</code> is set to
+the previous value of the body, so <code>$sum + .</code> gives
+<code>5</code>. After the final backtracking, <code>$sum + .</code> gives
+<code>6</code>. This final value is used as the value of the entire
+<code>fold</code> expression, so the above filter returns <code>6</code>.</p>
+<p>More formally, in order to evaluate <code>fold INIT as $VAR
+(BODY)</code>, jsq first sets <code>$VAR</code> to the value of <code>INIT</code>. It
+then runs through <code>BODY</code>. Each time <code>BODY</code> produces a value,
+<code>$VAR</code> is set to that value and jsq backtracks to find the
+next one. When <code>BODY</code> stops producing values, the final
+value of <code>$VAR</code> is the result of the entire expression.</p>
+
+			</div>
+		</section>
+		<section>
+			<h2><p>Assignment</p>
+</h2>
+			<p>Assignment works a little differently in jsq than in most
+programming languages. jsq doesn&#39;t distinguish between references
+to and copies of something - two objects or arrays are either
+equal or not equal, without any further notion of being &quot;the
+same object&quot; or &quot;not the same object&quot;.</p>
+<p>If an object has two fields which are arrays, <code>.foo</code> and <code>.bar</code>,
+and you append something to <code>.foo</code>, then <code>.bar</code> will not get
+bigger. Even if you&#39;ve just set <code>.bar = .foo</code>. If you&#39;re used to
+programming in languages like Python, Java, Ruby, Javascript,
+etc. then you can think of it as though jsq does a full deep copy
+of every object before it does the assignment (for performance,
+it doesn&#39;t actually do that, but that&#39;s the general idea).</p>
+
+			
+			<div>
+				<h3><p><code>=</code></p>
+</h3>
+				<p>The filter <code>.foo = 1</code> will take as input an object
+and produce as output an object with the &quot;foo&quot; field set to
+1. There is no notion of &quot;modifying&quot; or &quot;changing&quot; something
+in jsq - all jsq values are immutable. For instance,</p>
+<p> .foo = .bar | .foo.baz = 1</p>
+<p>will not have the side-effect of setting .bar.baz to be set
+to 1, as the similar-looking program in Javascript, Python,
+Ruby or other languages would. Unlike these languages (but
+like Haskell and some other functional languages), there is
+no notion of two arrays or objects being &quot;the same array&quot; or
+&quot;the same object&quot;. They can be equal, or not equal, but if
+we change one of them in no circumstances will the other
+change behind our backs.</p>
+<p>This means that it&#39;s impossible to build circular values in
+jsq (such as an array whose first element is itself). This is
+quite intentional, and ensures that anything a jsq program
+can produce can be represented in JSON.</p>
+
+			</div>
+			<div>
+				<h3><p><code>|=</code></p>
+</h3>
+				<p>As well as the assignment operator &#39;=&#39;, jsq provides the &quot;update&quot;
+operator &#39;|=&#39;, which takes a filter on the right-hand side and
+works out the new value for the property being assigned to by running
+the old value through this expression. For instance, .foo |= .+1 will
+build an object with the &quot;foo&quot; field set to the input&#39;s &quot;foo&quot; plus 1.</p>
+<p>This example should show the difference between &#39;=&#39; and &#39;|=&#39;:</p>
+<p>Provide input &#39;{&quot;a&quot;: {&quot;b&quot;: 10}, &quot;b&quot;: 20}&#39; to the programs:</p>
+<p>.a = .b<br>.a |= .b</p>
+<p>The former will set the &quot;a&quot; field of the input to the &quot;b&quot; field of the
+input, and produce the output {&quot;a&quot;: 20}. The latter will set the &quot;a&quot;
+field of the input to the &quot;a&quot; field&#39;s &quot;b&quot; field, producing {&quot;a&quot;: 10}.</p>
+
+			</div>
+			<div>
+				<h3><p><code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code>, <code>//=</code></p>
+</h3>
+				<p>jsq has a few operators of the form <code>a op= b</code>, which are all
+equivalent to <code>a |= . op b</code>. So, <code>+= 1</code> can be used to increment values.</p>
+
+			</div>
+			<div>
+				<h3><p>Complex assignments</p>
+</h3>
+				<p>Lots more things are allowed on the left-hand side of a jsq assignment
+than in most langauges. We&#39;ve already seen simple field accesses on
+the left hand side, and it&#39;s no surprise that array accesses work just
+as well:</p>
+<pre><code>.posts[0].title = &quot;JSQ Manual&quot;</code></pre>
+<p>What may come as a surprise is that the expression on the left may
+produce multiple results, referring to different points in the input
+document:</p>
+<pre><code>.posts[].comments |= . + [&quot;this is great&quot;]</code></pre>
+<p>That example appends the string &quot;this is great&quot; to the &quot;comments&quot;
+array of each post in the input (where the input is an object with a
+field &quot;posts&quot; which is an array of posts).</p>
+<p>When jsq encounters an assignment like &#39;a = b&#39;, it records the &quot;path&quot;
+taken to select a part of the input document while executing a. This
+path is then used to find which part of the input to change while
+executing the assignment. Any filter may be used on the
+left-hand side of an equals - whichever paths it selects from the
+input will be where the assignment is performed.</p>
+<p>This is a very powerful operation. Suppose we wanted to add a comment
+to blog posts, using the same &quot;blog&quot; input above. This time, we only
+want to comment on the posts written by &quot;tjoekbezoer&quot;. We can find those
+posts using the &quot;select&quot; function described earlier:</p>
+<pre><code>.posts[] | select(.author == &quot;tjoekbezoer&quot;)</code></pre>
+<p>The paths provided by this operation point to each of the posts that
+&quot;tjoekbezoer&quot; wrote, and we can comment on each of them in the same way
+that we did before:</p>
+<pre><code>(.posts[] | select(.author == &quot;tjoekbezoer&quot;) | .comments) |= . + [&quot;terrible.&quot;]</code></pre>
+
+			</div>
+		</section>
+	</div>
 </body>
 </html>
