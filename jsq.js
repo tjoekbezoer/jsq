@@ -85,45 +85,51 @@
 		[
 			// (1) unary operator
 			'(!(?!=)|~)|',
-			// (2) binary operator
-			'([-+*/\\\\^]|&(?!&))|',
-			// (3) comparison operator
-			'((?:&&)|(?:\\|\\|)|(?:==)|(?:!=)|(?:>=)|(?:<=)|<|>)|',
-			// (4) assignment operator
-			'(as(?= )|=|\\|=)|',
+			// (2) comparison operator
+			'(&&|\\|\\||===|==|!=|>=|<=|<|>)|',
+			// (3) assignment operator
+			'(as(?= )|=|\\|=|\\+=|-=|\\*=|/=)|',
+			// (4) arithmetic operator
+			'([-+*/\\\\^]|&)|',
 			// (5) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
 			// (6) boolean
 			'(true|false)|',
-			// (7) variable
+			// (7) null
+			'(null)|',
+			// (8) undefined
+			'(undefined)|',
+			// (9) variable
 			'(\\$[a-z_][a-z0-9_]*)|',
-			// (8) identifier
+			// (10) identifier
 			'([a-z_][a-z0-9_]*)|',
-			// (9) float
+			// (11) float
 			'(\\d+\\.\\d+)|',
-			// (10) integer
+			// (12) integer
 			'(\\d+)|',
-			// (11) string. TODO: single quotes
+			// (13) string. TODO: single quotes
 			'("(?:\\\\.|[^"])*")|',
-			// (12) white space
+			// (14) white space
 			'(\\s+)'
 		].join(''),
 		'gi'
 	);
 	// The elements in _t correlate to the _regexp subpatterns.
 	var _t = {
-		op_uny: 1,
-		op_arm: 2,
-		op_cmp: 3,
-		op_ass: 4,
-		ctl: 5,
-		bln: 6,
-		vrb: 7,
-		id: 8,
-		flt: 9,
-		itg: 10,
-		str: 11,
-		wsp: 12
+		op_uny:	1,
+		op_cmp:	2,
+		op_ass:	3,
+		op_arm:	4,
+		ctl:		5,
+		bln:		6,
+		nil:		7,
+		udf:		8,
+		vrb:		9,
+		id:			10,
+		flt:		11,
+		itg:		12,
+		str:		13,
+		wsp:		14
 	};
 	
 	// TODO: Optimize throw mechanism. Group error strings here?
@@ -146,7 +152,7 @@
 			// This line is based on the fact that `token` will always return an array like
 			// [matched string, [subpattern, ...]], so in this case 11 elements after the
 			// matched string.
-			i = 0; while( ++i<=12 && token[i]==void(0) ){}
+			i = 0; while( ++i<=14 && token[i]==void(0) ){}
 			if( i == _t.str )
 				token[0] = token[0].slice(1,-1);
 			// Add token.
@@ -248,6 +254,12 @@
 					break;
 				case _t.bln:
 					this.addup('bool').value = token.data;
+					break;
+				case _t.nil:
+					this.addup('null');
+					break;
+				case _t.udf:
+					this.addup('undefined');
 					break;
 				case _t.vrb:
 					this.parse_variable();
@@ -599,6 +611,8 @@
 								case _t.id:
 								case _t.ctl:
 								case _t.bln:
+								case _t.nil:
+								case _t.udf:
 								case _t.vrb:
 									this.add('value');
 									if(
@@ -811,6 +825,9 @@
 			case 'function_call':
 				_function(input, output, branch);
 				break;
+			case 'null':
+				output.push(null);
+				break;
 			case 'number':
 			case 'string':
 				output.push(branch.value);
@@ -829,6 +846,9 @@
 				break;
 			case 'unary':
 				_unary(input, output, branch);
+				break;
+			case 'undefined':
+				output.push(void(0));
 				break;
 			case 'variable':
 				_variable(input, output, branch);
