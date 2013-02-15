@@ -187,6 +187,9 @@
 		eq(complex, '.fifth as $obj | $obj["foo"]', ['bar']);
 		eq(complex, '.fifth as $obj | $obj.sub.one', [1]);
 		eq(complex, '.fifth.foo as $obj | $obj', ['bar']);
+		
+		eq(complex, '.fifth as $var | $var["foo"]', ['bar']);
+		eq(complex, '.fifth as $var | $var[.seventh[0]]', ['bar']);
 	});
 	
 	test('executes value assignment correctly', function() {

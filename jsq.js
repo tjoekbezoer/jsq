@@ -1018,7 +1018,7 @@
 	function _variable( input, output, branch ) {
 		var filter;
 		if( filter = branch.children[0] ) {
-			_filter(_vars[branch.value], _vars[branch.value], output, filter.children);
+			_filter(input, _vars[branch.value], output, filter.children);
 		} else {
 			output.push.apply(output, _vars[branch.value]);
 		}
