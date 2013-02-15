@@ -744,7 +744,7 @@
 	
 	
 	// Runtime
-	function _binary( input, output, branch ) {
+	function _binary( input, output, branch, undefined ) {
 		var op = branch.children[1].value,
 			lhv = branch.children[0],
 			rhv = branch.children[2];
@@ -755,6 +755,9 @@
 			[rhv.value] :
 			_expression(input, [], rhv);
 		var i, j, ret, key;
+		
+		if( !l.length ) l = [undefined];
+		if( !r.length ) r = [undefined];
 		
 		for( i=0; i<l.length; i++ ) {
 			for( j=0; j<r.length; j++ ) {
@@ -778,8 +781,8 @@
 						ret = _binary.op[op](l[i], r[j]);
 						break;
 				}
-				ret != void(0) && output.push(ret);
-				ret = void(0);
+				ret != undefined && output.push(ret);
+				ret = undefined;
 			}
 		}
 	}
