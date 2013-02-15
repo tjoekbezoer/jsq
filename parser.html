@@ -37,6 +37,8 @@
 				background-color: yellow;
 			}
 			#lexer span.bln,
+			#lexer span.nil,
+			#lexer span.udf,
 			#lexer span.itg,
 			#lexer span.flt {
 				background-color: orangered;
@@ -170,7 +172,12 @@
 	"first": 1,
 	"second": 2,
 	"third": 3,
-	"fourth": [1,2,3,4,5,6,7,8]
+	"fourth": [1,2,3,4,5,6,7,8],
+	"fifth": {
+		"foo": "bar",
+		"bar": 2
+	},
+	"sixth": ["foo"]
 }</div>
 <div data-name="Multiple Object">[
 	{
