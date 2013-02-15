@@ -773,6 +773,7 @@
 					case '&&':
 					case '||':
 					case '==':
+					case '===':
 					case '!=':
 					case '>=':
 					case '<=':
@@ -801,19 +802,20 @@
 			else
 				return l - r;
 		},
-		'*':  function( l, r ) { return l * r },
-		'/':  function( l, r ) { return l / r },
-		'&&': function( l, r ) { return l && r },
-		'||': function( l, r ) { return l || r },
-		'==': function( l, r ) { return l == r },
-		'!=': function( l, r ) { return l != r },
-		'>=': function( l, r ) { return l >= r },
-		'<=': function( l, r ) { return l <= r },
-		'>':  function( l, r ) { return l > r },
-		'<':  function( l, r ) { return l < r },
-		'&':	function( l, r ) { return l & r },
-		'\\':	function( l, r ) { return l | r },
-		'^':	function( l, r ) { return l ^ r }
+		'*':   function( l, r ) { return l * r },
+		'/':   function( l, r ) { return l / r },
+		'&&':  function( l, r ) { return l && r },
+		'||':  function( l, r ) { return l || r },
+		'==':  function( l, r ) { return l == r },
+		'===': function( l, r ) { return l === r },
+		'!=':  function( l, r ) { return l != r },
+		'>=':  function( l, r ) { return l >= r },
+		'<=':  function( l, r ) { return l <= r },
+		'>':   function( l, r ) { return l > r },
+		'<':   function( l, r ) { return l < r },
+		'&':   function( l, r ) { return l & r },
+		'\\':  function( l, r ) { return l | r },
+		'^':   function( l, r ) { return l ^ r }
 	};
 	function _expression( input, output, branch ) {
 		var col, i, result;
