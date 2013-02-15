@@ -312,7 +312,7 @@
 		
 		return this;
 	};
-	Parser.prototype.parse_assignment = function( operatorToken ) {
+	Parser.prototype.parse_assignment = function( opToken ) {
 		var token = this.tokens.skip(true),
 				num = 1;
 		
@@ -325,17 +325,32 @@
 		}
 		
 		this.wrap('assignment');
-		switch( operatorToken.data ) {
+		switch( opToken.data ) {
 			case 'as':
 				if( token && token.type == _t.vrb )
 					this.addup('name').value = token.data;
 				break;
 			case '=':
 			case '|=':
+			case '+=':
+			case '-=':
+			case '*=':
+			case '/=':
 				if( this.current.last.name != 'filter' )
-					throw 'jsq_parse_assignment: Unexpected \''+operatorToken.data+'\' at position '+operatorToken.index;
-				this.addup('operator').value = operatorToken.data;
-				this.parse();
+					throw 'jsq_parse_assignment: Unexpected \''+opToken.data+'\' at position '+opToken.index;
+				if( opToken.data != '=' && opToken.data != '|=' ) {
+					// Shorthand op for x |= . op filter
+					this.addup('operator').value = '|='
+					this.add('binary');
+					this.addup('filter');
+					this.addup('operator').value = opToken.data.substr(0,1);
+					this.parse();
+					this.up();
+				} else {
+					// = or |=
+					this.addup('operator').value = opToken.data;
+					this.parse();
+				}
 				break;
 		}
 		this.up(num);
