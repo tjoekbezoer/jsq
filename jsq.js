@@ -290,7 +290,7 @@
 							this.parse_object();
 							break;
 						case ',':
-							this.parse_comma();
+							this.parse_list();
 							break;
 						case '|':
 							this.parse_pipe();
@@ -368,7 +368,7 @@
 				lhs.name == 'pipe' ||
 				// Value assignment, eg.: .foo=1 or .foo|=.[0]
 				lhs.name == 'assignment' && lhs.children.length == 3 ||
-				token.type == _t.op_arm && lhs.name == 'comma' ||
+				token.type == _t.op_arm && lhs.name == 'list' ||
 				// The left hand side is a binary, so it has 3 children:
 				// a lhs, an operator and a rhs. Perform an action based on
 				// its operator.
@@ -408,7 +408,7 @@
 					!lhs ||
 					lhs.name == 'operator' ||
 					// to parse things like 1,-1 and 1,2--1 correctly
-					lhs.parent.name == 'comma' && this.tokens.back().data == ',' ||
+					lhs.parent.name == 'list' && this.tokens.back().data == ',' ||
 					lhs.parent.name == 'pipe'
 				)
 			) {
@@ -449,19 +449,19 @@
 	};
 	// Creates a comma separated list of expressions. These lists cannot
 	// be nested. Lists can be nested inside parenthesis and square/curly brackets.
-	Parser.prototype.parse_comma = function() {
+	Parser.prototype.parse_list = function() {
 		var len = this.current.children.length,
 				cur = this.current,
 				peek;
 		
-		if( len && (cur = this.current.children[len-1]).name == 'comma' ) {
-			// Last child was already a comma? Add this to that branch
+		if( len && (cur = this.current.children[len-1]).name == 'list' ) {
+			// Last child was already a list? Add this to that branch
 			this.current = cur;
 		} else if( len ) {
-			// Otherwise wrap last child and the new value into a new comma branch
-			this.wrap('comma');
+			// Otherwise wrap last child and the new value into a new list branch
+			this.wrap('list');
 		} else {
-			throw 'jsq_parse_comma: Unexpected , at position '+this.tokens.current().index;
+			throw 'jsq_parse_list: Unexpected , at position '+this.tokens.current().index;
 		}
 		
 		// TODO: When )]}| is encountered, throw?
@@ -727,8 +727,8 @@
 	};
 	// Say you have:
 	//    program > filter
-	// Now when you do wrap('comma'):
-	//    program > comma > filter
+	// Now when you do wrap('list'):
+	//    program > list > filter
 	Parser.prototype.wrap = function( name ) {
 		var last, parent, ret;
 		
@@ -835,7 +835,7 @@
 				branch.children.length && _expression(input, col, branch.children[0]);
 				output.push(col);
 				break;
-			case 'comma':
+			case 'list':
 				for( i=0; i<branch.children.length; i++ )
 					_expression(input, output, branch.children[i]);
 				break;
