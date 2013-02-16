@@ -1,37 +1,46 @@
 headline: jsq Manual
 intro: |
-
-  A jsq program is a "filter": it takes an input, and produces an
-  output. There are a lot of builtin filters for extracting a
-  particular field of an object, or converting a number to a string,
-  or various other standard tasks.
-
-  Filters can be combined in various ways — you can pipe the output of
-  one filter into another filter, or collect the output of a filter
-  into an array.
   
-  Some filters produce multiple results, for instance there's one that
-  produces all the elements of its input array. Piping that filter
-  into a second runs the second filter for each element of the
-  array. Generally, things that would be done with loops and iteration
-  in other languages are just done by gluing filters together in jsq.
-
-  It's important to remember that every filter has an input and an
-  output. Even literals like "hello" or 42 are filters — they take an
-  input but always produce the same literal as output. Operations that
-  combine two filters, like addition, generally feed the same input to
-  both and combine the results. So, you can implement an averaging
-  filter as `add / length` — feeding the input array both to the `add`
-  filter and the `length` filter and dividing the results.
-
-  But that's getting ahead of ourselves. :) Let's start with something
-  simpler:
+  Use jsq to take control of your JSON; slice, filter, map, transform,
+  calculate — it's up to you. All in a purpose-designed, simple language.
 
 sections:
+  - title: Action
+    body: |
+      
+      * Download [jsq v0.1.0][download] — not yet production ready!
+      * Run the [test suite][test]
+      * Check out the [project on GitHub][project]
+      
+      [download]: //raw.github.com/tjoekbezoer/jsq/master/jsq.js
+      [test]: //tjoekbezoer.github.com/jsq/test
+      [project]: //www.github.com/tjoekbezoer/jsq
+  
   - title: Invoking jsq
     body: |
       
-      Invoke that stuff!
+      A jsq program is a "filter": it takes an input, and produces an
+      output. There are a lot of builtin filters for extracting a
+      particular field of an object, or converting a number to a string,
+      or various other standard tasks.
+
+      Filters can be combined in various ways — you can pipe the output of
+      one filter into another filter, or collect the output of a filter
+      into an array.
+      
+      Some filters produce multiple results, for instance there's one that
+      produces all the elements of its input array. Piping that filter
+      into a second runs the second filter for each element of the
+      array. Generally, things that would be done with loops and iteration
+      in other languages are just done by gluing filters together in jsq.
+
+      It's important to remember that every filter has an input and an
+      output. Even literals like "hello" or 42 are filters — they take an
+      input but always produce the same literal as output. Operations that
+      combine two filters, like addition, generally feed the same input to
+      both and combine the results. So, you can implement an averaging
+      filter as `add / length` — feeding the input array both to the `add`
+      filter and the `length` filter and dividing the results.
 
   - title: Basic filters
     entries:
@@ -229,7 +238,9 @@ sections:
           produces
           
               {"tjoekbezoer": ["JSQ Primer", "More JSQ"]}
-              
+          
+          Simple expressions, like a single filter, can also be used without the parentheses.
+          
         examples:
           - program: '{user, title: .titles[]}'
             input: '{"user":"tjoekbezoer","titles":["JSQ Primer", "More JSQ"]}'
@@ -365,7 +376,7 @@ sections:
           otherwise.
 
           It's useful for filtering lists: `[1,2,3] | map(select(. >= 2))`
-          will give you `[3]`.
+          will give you `[2,3]`.
 
         examples:
           - program: 'map(select(. >= 2))'
@@ -424,7 +435,7 @@ sections:
             input: '[]'
             output: ["null"]
             
-      - title: "`sort, sort_by`"
+      - title: "`sort`, `sort_by`"
         body: |
           
           The `sort` functions sorts its input, which must be an
@@ -513,8 +524,8 @@ sections:
                   {"name": "/bin/ls", "children": []},
                   {"name": "/bin/sh", "children": []}]},
                 {"name": "/home", "children": [
-                  {"name": "/home/stephen", "children": [
-                    {"name": "/home/stephen/jsq", "children": []}
+                  {"name": "/home/daan", "children": [
+                    {"name": "/home/daan/jsq", "children": []}
                   ]}
                 ]}
               ]}
@@ -537,7 +548,7 @@ sections:
 
   - title: Conditionals and Comparisons
     entries:
-      - title: "`==`, `!=`"
+      - title: "`==`, `===`, `!=`"
         body: |
 
           The expression 'a == b' will produce 'true' if the result of a and b
@@ -572,9 +583,7 @@ sections:
       - title: if(cond, then, else)
         body: |
 
-          `if A then B else C end` will act the same as `B` if `A`
-          produces a value other than false or null, but act the same
-          as `C` otherwise.
+          `if(A, B, C)` will execute `B` if `A` evaluates as truthy, and will execute `C` otherwise.
           
           Checking for false or null is a simpler notion of
           "truthiness" than is found in Javascript or Python, but it
@@ -813,7 +822,7 @@ sections:
           input, and produce the output {"a": 20}. The latter will set the "a"
           field of the input to the "a" field's "b" field, producing {"a": 10}.
 
-      - title: "`+=`, `-=`, `*=`, `/=`, `//=`"
+      - title: "`+=`, `-=`, `*=`, `/=`"
         body: |
 
           jsq has a few operators of the form `a op= b`, which are all
