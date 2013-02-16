@@ -521,7 +521,7 @@
 				}
 				
 				if( !(token = this.tokens.skip(true)) || token.data != ']' )
-					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token.data, token.index);
+					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.data, token && token.index);
 			} else if(
 				(!this.current.children.length && peek.data != '.' || peek.data == '.' && this.tokens.next()) &&
 				(peek = this.tokens.peek()) && (
@@ -566,7 +566,7 @@
 				this.up();
 				
 				if( !(token = this.tokens.current()) || token.data != ')' )
-					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token.data, token.index);
+					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.data, token && token.index);
 			} else {
 				this.tokens.skip(true);
 			}
@@ -1107,6 +1107,13 @@
 				_error('if: Incorrect syntax on if() call');
 			}
 		},
+		'format': function( input, output, argument ) {
+			if( argument.name == 'string' ) {
+				var values = input.slice(0);
+				values.unshift(argument.value);
+				output.push(_sprintf.apply(this, values));
+			}
+		},
 		'keys': function( input, output ) {
 			_each(input, function( input ) {
 				if( input instanceof Object ) {
@@ -1148,7 +1155,7 @@
 					output.push(input[i]);
 			}
 		},
-		'sum': function( input, output ) {
+		'add': function( input, output ) {
 			var ret = 0, i;
 			for( i=0; i<input.length; i++ ) {
 				ret += input[i] instanceof Array ?
