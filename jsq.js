@@ -80,6 +80,13 @@
 		
 		return target;
 	}
+	// Replaces %# in a string with the (#+1)th argument.
+	function _sprintf( str /* ,replacement... */ ) {
+		var args = Array.prototype.slice.call(arguments, 1);
+		return typeof str == 'string' && str.replace(/%(\d+)/g, function(match, i) { 
+			return args[i] || '';
+		});
+	};
 	
 	var _regex = new RegExp(
 		[
@@ -132,8 +139,16 @@
 		wsp:		14
 	};
 	
-	// TODO: Optimize throw mechanism. Group error strings here?
-	//function _error( msg )
+	// Error messages.
+	var _e = {
+		EOF: 'Unexpected EOF',
+		UNEXPECTED_TOKEN: 'Unexpected \'%0\' at position %1',
+		UNRECOGNIZED_TOKEN: 'Unrecognized token \'%0\' at position %1'
+	};
+	function _error( str ) {
+		if( !str ) str = 'Unknown error';
+		throw _sprintf.apply(this, arguments);
+	}
 	
 	var Lexer = function( query ) {
 		var lastIndex = 0,
@@ -145,7 +160,7 @@
 			// The lastIndex won't be reset if an exception is thrown, so do it manually.
 			if( lastIndex + token[0].length != _regex.lastIndex ) {
 				_regex.lastIndex = 0;
-				throw 'jsq_lexer: Unexpected token '+query.substr(token.index-1,1)+' at position '+token.index;
+				_error(_e.UNRECOGNIZED_TOKEN, query.substr(token.index-1,1), token.index);
 			}
 			
 			// See what kind of token this is, and add it to the stack.
@@ -296,7 +311,7 @@
 							this.parse_pipe();
 							break;
 						default:
-							throw 'jsq_parse: Unrecognized \''+token.data+'\' at position '+token.index;
+							_error(_e.UNRECOGNIZED_TOKEN, token.data, token.index);
 					}
 			}
 			// If this is a subroutine of parse(), break out when
@@ -308,7 +323,7 @@
 		}
 		
 		if( this.tokens.eof() && this.current.name != 'program' )
-			throw 'jsq_parse: Unexpected EOF';
+			_error(_e.EOF);
 		
 		return this;
 	};
@@ -337,7 +352,7 @@
 			case '*=':
 			case '/=':
 				if( this.current.last.name != 'filter' )
-					throw 'jsq_parse_assignment: Unexpected \''+opToken.data+'\' at position '+opToken.index;
+					_error(_e.UNEXPECTED_TOKEN, opToken.data, opToken.index);
 				if( opToken.data != '=' && opToken.data != '|=' ) {
 					// Shorthand op for x |= . op filter
 					this.addup('operator').value = '|='
@@ -359,9 +374,9 @@
 	// Binaries can be chained, where execution precedence is taken into account as per
 	// the normal arithmetic rules.
 	Parser.prototype.parse_binary = function( lhs ) {
-		var token = this.tokens.current(),
-			lhs = lhs || this.current.last,
-			prev, op;
+		var token = this.tokens.current()
+			, lhs = lhs || this.current.last
+			, prev, op;
 		
 		if(
 			lhs && (
@@ -427,7 +442,8 @@
 			}
 		}
 		
-		throw 'jsq_parse_binary: Unexpected '+this.tokens.current().data+' at position '+this.tokens.current().index;
+		var cur = this.tokens.current();
+		_error(_e.UNEXPECTED_TOKEN, cur.data, cur.index);
 	};
 	// 
 	Parser.prototype.parse_collection = function() {
@@ -443,7 +459,7 @@
 		}
 		
 		if( !token )
-			throw 'jsq_parse_collection: Unexpected EOF';
+			_error(_e.EOF);
 		this.tokens.next();
 		this.up();
 	};
@@ -461,7 +477,7 @@
 			// Otherwise wrap last child and the new value into a new list branch
 			this.wrap('list');
 		} else {
-			throw 'jsq_parse_list: Unexpected , at position '+this.tokens.current().index;
+			_error(_e.UNEXPECTED_TOKEN, ',', this.tokens.current().index);
 		}
 		
 		// TODO: When )]}| is encountered, throw?
@@ -504,11 +520,8 @@
 					all = false;
 				}
 				
-				if( !(token = this.tokens.skip(true)) || token.data != ']' ) {
-					throw token ?
-						'jsq_parse_filter: Unexpected '+token.data+' at position '+token.index :
-						'jsq_parse_filter: Unexpected EOF';
-				}
+				if( !(token = this.tokens.skip(true)) || token.data != ']' )
+					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token.data, token.index);
 			} else if(
 				(!this.current.children.length && peek.data != '.' || peek.data == '.' && this.tokens.next()) &&
 				(peek = this.tokens.peek()) && (
@@ -532,7 +545,7 @@
 			this.up();
 		} else {
 			if( !this.tokens.current() )
-				throw 'jsq_parse_filter: Unexpected EOF';
+				_error(_e.EOF);
 			this.up();
 		}
 	};
@@ -552,11 +565,8 @@
 				}
 				this.up();
 				
-				if( !(token = this.tokens.current()) || token.data != ')' ) {
-					throw token ?
-						'jsq_parse_function: Unexpected '+token.data+' at position '+token.index :
-						'jsq_parse_function: Unexpected EOF';
-				}
+				if( !(token = this.tokens.current()) || token.data != ')' )
+					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token.data, token.index);
 			} else {
 				this.tokens.skip(true);
 			}
@@ -591,14 +601,14 @@
 						// Comma found. Look for another element, or throw when there is none
 						// or this is a double comma.
 						if( !this.current.children.length ) {
-							throw 'jsq_parse_object: Unexpected , at position '+token.index;
+							_error(_e.UNEXPECTED_TOKEN, ',', token.index);
 						} else if(
 							(peek = this.tokens.peek(true)) &&
 							peek.type == _t.ctl && (peek.data == ',' || peek.data == '}')
 						) {
-							throw 'jsq_parse_object: Unexpected '+peek.data+' at position '+peek.index;
+							_error(_e.UNEXPECTED_TOKEN, peek.data, peek.index);
 						} else if( !peek ) {
-							throw 'jsq_parse_object: Unexpected EOF';
+							_error(_e.EOF);
 						} else {
 							continue;
 						}
@@ -639,7 +649,7 @@
 									) {
 										this.parse();
 									} else {
-										throw 'jsq_parse_object: Unexpected '+token.data+' at position '+token.index;
+										_error(_e.UNEXPECTED_TOKEN, token.data, token.index);
 									}
 									// Also up out of 'element'
 									this.up(2);
@@ -656,7 +666,7 @@
 						}
 					}
 				default:
-					throw 'jsq_parse_object: Unexpected '+(peek?peek:token).data+' at position '+(peek?peek:token).index;
+					_error(_e.UNEXPECTED_TOKEN, (peek?peek:token).data, (peek?peek:token).index);
 			}
 		}
 		this.up();
@@ -678,7 +688,7 @@
 	Parser.prototype.parse_unary = function() {
 		var token = this.tokens.current();
 		if( !this.tokens.skip(true) )
-			throw 'jsq_parse_unary: Unexpected EOF';
+			_error(_e.EOF);
 		this.add('unary').value = token.data;
 		this.parse();
 		this.up();
@@ -722,7 +732,7 @@
 				this.up(num);
 			return this.current = this.current.parent;
 		} else {
-			throw 'jsq_up: Fatal internal error. Bug?';
+			_error('jsq_up: Fatal internal error. Bug?');
 		}
 	};
 	// Say you have:
@@ -998,7 +1008,7 @@
 				if( exp.length == 1 )
 					key = exp[0];
 				else
-					throw 'jsq_runtime_object: Key definition with multiple values';
+					_error('Key definition with multiple or no values');
 			} else {
 				key = el[0].value;
 			}
