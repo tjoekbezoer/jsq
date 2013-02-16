@@ -1082,6 +1082,21 @@
 	
 	// Modules
 	jsq['fn'] = {
+		'if': function( input, output, argument ) {
+			if( argument.name == 'list' && argument.children.length === 3 ) {
+				var children = argument.children
+					, exp = _expression(input, [], children[0])
+					, i;
+				for( i=0; i<exp.length; i++ ) {
+					if( exp[i] ) {
+						return _expression(input, output, children[1]);
+					}
+				}
+				_expression(input, output, children[2]);
+			} else {
+				_error('if: Incorrect syntax on if() call');
+			}
+		},
 		'keys': function( input, output ) {
 			_each(input, function( input ) {
 				if( input instanceof Object ) {
