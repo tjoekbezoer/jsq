@@ -8,9 +8,46 @@
 </head>
 <body>
 	<div id="all">
-		<div id="header"></div>
+		<h1><p>jsq Manual</p>
+</h1>
 		
-		<p>A jsq program is a &quot;filter&quot;: it takes an input, and produces an
+		<p>Use jsq to take control of your JSON; slice, filter, map, transform,
+calculate — it&#39;s up to you. All in a purpose-designed, simple language.</p>
+
+		
+		<div id="header">
+			<pre><code><span class="statement">var</span> grades = {
+  <span class="string">"data"</span>: [
+    {<span class="string">"uid"</span>: <span class="number">1</span>, <span class="string">"grades"</span>: [<span class="number">5</span>,<span class="number">7</span>,<span class="number">9</span>]},
+    {<span class="string">"uid"</span>: <span class="number">2</span>, <span class="string">"grades"</span>: [<span class="number">3</span>,<span class="number">9</span>,<span class="number">6</span>]}
+  ],
+  <span class="string">"users"</span>: {
+    <span class="string">"1"</span>: {<span class="string">"name"</span>: <span class="string">"Bruce Willis"</span>},
+    <span class="string">"2"</span>: {<span class="string">"name"</span>: <span class="string">"Samuel L. Jackson"</span>}
+  }
+};
+
+<span class="call">jsq</span>(input, <span class="string">'.users as $u | .data[] | {$u[.uid].name: .grades}'</span>);
+<span class="comment">» [{"Bruce Willis":[5,7,9]}, {"Samuel L. Jackson":[3,9,6]}]</span></code></pre>
+		</div>
+		
+		<section>
+			<h2><p>Action</p>
+</h2>
+			<ul>
+<li>Download <a href="//raw.github.com/tjoekbezoer/jsq/master/jsq.js">jsq v0.1.0</a> — not yet production ready!</li>
+<li>Run the <a href="//tjoekbezoer.github.com/jsq/test">test suite</a></li>
+<li>Check out the <a href="//www.github.com/tjoekbezoer/jsq">project on GitHub</a></li>
+</ul>
+
+			
+			
+			<hr/>
+		</section>
+		<section>
+			<h2><p>Invoking jsq</p>
+</h2>
+			<p>A jsq program is a &quot;filter&quot;: it takes an input, and produces an
 output. There are a lot of builtin filters for extracting a
 particular field of an object, or converting a number to a string,
 or various other standard tasks.</p>
@@ -29,16 +66,10 @@ combine two filters, like addition, generally feed the same input to
 both and combine the results. So, you can implement an averaging
 filter as <code>add / length</code> — feeding the input array both to the <code>add</code>
 filter and the <code>length</code> filter and dividing the results.</p>
-<p>But that&#39;s getting ahead of ourselves. :) Let&#39;s start with something
-simpler:</p>
-
-		
-		<section>
-			<h2><p>Invoking jsq</p>
-</h2>
-			<p>Invoke that stuff!</p>
 
 			
+			
+			<hr/>
 		</section>
 		<section>
 			<h2><p>Basic filters</p>
@@ -108,6 +139,8 @@ expression <code>.[] | .foo</code> retrieves the &quot;foo&quot; field of each
 element of the input array.</p>
 
 			</div>
+			
+			<hr/>
 		</section>
 		<section>
 			<h2><p>Types and Values</p>
@@ -173,8 +206,11 @@ expression. With the same input as above,</p>
 <pre><code>{(.user): .titles}</code></pre>
 <p>produces</p>
 <pre><code>{&quot;tjoekbezoer&quot;: [&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</code></pre>
+<p>Simple expressions, like a single filter, can also be used without the parentheses.</p>
 
 			</div>
+			
+			<hr/>
 		</section>
 		<section>
 			<h2><p>Builtin operators and functions</p>
@@ -263,7 +299,7 @@ for that array: the integers from 0 to length-1.</p>
 <code>foo</code> returns true for that input, and produces no output
 otherwise.</p>
 <p>It&#39;s useful for filtering lists: <code>[1,2,3] | map(select(. &gt;= 2))</code>
-will give you <code>[3]</code>.</p>
+will give you <code>[2,3]</code>.</p>
 
 			</div>
 			<div>
@@ -295,7 +331,7 @@ as those for the <code>+</code> operator (described above).</p>
 
 			</div>
 			<div>
-				<h3><p><code>sort, sort_by</code></p>
+				<h3><p><code>sort</code>, <code>sort_by</code></p>
 </h3>
 				<p>The <code>sort</code> functions sorts its input, which must be an
 array. Values are sorted in the following order:</p>
@@ -358,8 +394,8 @@ levels. Suppose your input represents a filesystem:</p>
     {&quot;name&quot;: &quot;/bin/ls&quot;, &quot;children&quot;: []},
     {&quot;name&quot;: &quot;/bin/sh&quot;, &quot;children&quot;: []}]},
   {&quot;name&quot;: &quot;/home&quot;, &quot;children&quot;: [
-    {&quot;name&quot;: &quot;/home/stephen&quot;, &quot;children&quot;: [
-      {&quot;name&quot;: &quot;/home/stephen/jsq&quot;, &quot;children&quot;: []}
+    {&quot;name&quot;: &quot;/home/daan&quot;, &quot;children&quot;: [
+      {&quot;name&quot;: &quot;/home/daan/jsq&quot;, &quot;children&quot;: []}
     ]}
   ]}
 ]}</code></pre>
@@ -370,6 +406,8 @@ with:</p>
 <pre><code>recurse(.children[]) | .name</code></pre>
 
 			</div>
+			
+			<hr/>
 		</section>
 		<section>
 			<h2><p>Conditionals and Comparisons</p>
@@ -377,7 +415,7 @@ with:</p>
 			
 			
 			<div>
-				<h3><p><code>==</code>, <code>!=</code></p>
+				<h3><p><code>==</code>, <code>===</code>, <code>!=</code></p>
 </h3>
 				<p>The expression &#39;a == b&#39; will produce &#39;true&#39; if the result of a and b
 are equal (that is, if they represent equivalent JSON documents) and
@@ -401,9 +439,7 @@ to, less than or equal to or less than their right argument
 			<div>
 				<h3><p>if(cond, then, else)</p>
 </h3>
-				<p><code>if A then B else C end</code> will act the same as <code>B</code> if <code>A</code>
-produces a value other than false or null, but act the same
-as <code>C</code> otherwise.</p>
+				<p><code>if(A, B, C)</code> will execute <code>B</code> if <code>A</code> evaluates as truthy, and will execute <code>C</code> otherwise.</p>
 <p>Checking for false or null is a simpler notion of
 &quot;truthiness&quot; than is found in Javascript or Python, but it
 means that you&#39;ll sometimes have to be more explicit about
@@ -437,6 +473,8 @@ form of &quot;or&quot;, picking between two values rather than
 evaluating a condition, see the &quot;//&quot; operator below.</p>
 
 			</div>
+			
+			<hr/>
 		</section>
 		<section>
 			<h2><p>Advanced features</p>
@@ -525,6 +563,8 @@ next one. When <code>BODY</code> stops producing values, the final
 value of <code>$VAR</code> is the result of the entire expression.</p>
 
 			</div>
+			
+			<hr/>
 		</section>
 		<section>
 			<h2><p>Assignment</p>
@@ -582,7 +622,7 @@ field of the input to the &quot;a&quot; field&#39;s &quot;b&quot; field, produci
 
 			</div>
 			<div>
-				<h3><p><code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code>, <code>//=</code></p>
+				<h3><p><code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code></p>
 </h3>
 				<p>jsq has a few operators of the form <code>a op= b</code>, which are all
 equivalent to <code>a |= . op b</code>. So, <code>+= 1</code> can be used to increment values.</p>
@@ -620,6 +660,8 @@ that we did before:</p>
 <pre><code>(.posts[] | select(.author == &quot;tjoekbezoer&quot;) | .comments) |= . + [&quot;terrible.&quot;]</code></pre>
 
 			</div>
+			
+			<hr/>
 		</section>
 	</div>
 </body>
