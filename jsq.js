@@ -1,6 +1,6 @@
 
 
-(function( _exports ) {
+;(function( window ) {
 	// Extend target object with the properties from the given source objects.
 	function _extend( target /*[, source]...*/ ) {
 		for( var i=1; i<arguments.length; i++ ) {
@@ -79,6 +79,20 @@
 		}
 		
 		return target;
+	}
+	// `which` is 'max', or 'min'
+	function _extreme( which, input ) {
+		if( input instanceof Array ) {
+			return Math[which].apply(Math, input);
+		} else if( input instanceof Object ) {
+			var max = 0;
+			_each(input, function( val ) {
+				max = Math[which](max, val);
+			});
+			return max;
+		} else {
+			return input;
+		}
 	}
 	// Replaces %# in a string with the (#+1)th argument.
 	function _sprintf( str /* ,replacement... */ ) {
@@ -1099,8 +1113,18 @@
 	
 	// Modules
 	jsq['fn'] = {
+		'add': function( input, output ) {
+			var ret = 0, i;
+			for( i=0; i<input.length; i++ ) {
+				ret += input[i] instanceof Array ?
+					arguments.callee(input[i]) :
+					input[i] == +input[i] ? input[i] : 0;
+			}
+			
+			return output && output.push(ret) || ret;
+		},
 		'if': function( input, output, argument ) {
-			if( argument.name == 'list' && argument.children.length === 3 ) {
+			if( argument && argument.name == 'list' && argument.children.length >= 2 ) {
 				var children = argument.children
 					, exp = _expression(input, [], children[0])
 					, i;
@@ -1109,13 +1133,17 @@
 						return _expression(input, output, children[1]);
 					}
 				}
-				_expression(input, output, children[2]);
+				if( children[2] )
+					_expression(input, output, children[2]);
 			} else {
 				_error('if: Incorrect syntax on if() call');
 			}
 		},
+		'empty': function() {
+			return;
+		},
 		'format': function( input, output, argument ) {
-			if( argument.name == 'string' ) {
+			if( argument && argument.name == 'string' ) {
 				var values = input.slice(0);
 				values.unshift(argument.value);
 				output.push(_sprintf.apply(this, values));
@@ -1155,24 +1183,71 @@
 				}
 			});
 		},
+		'max': function( input, output, argument ) {
+			input = argument ? _expression(input, [], argument)[0] : input[0];
+			output.push(_extreme('max', input));
+		},
+		'min': function( input, output, argument ) {
+			input = argument ? _expression(input, [], argument)[0] : input[0];
+			output.push(_extreme('min', input));
+		},
+		'recurse': function( input, output, argument ) {
+			if( argument && argument.name == 'filter' ) {
+				for( var i=0; i<input.length; i++ ) {
+					output.push(input[i]);
+					var exp = _expression([input[i]], [], argument);
+					if( exp.length ) {
+						this.recurse(exp, output, argument);
+					}
+				}
+			}
+		},
 		'select': function( input, output, argument ) {
 			for( var i=0; i<input.length; i++ ) {
 				var result = _expression([input[i]], [], argument);
 				if( result.length == 1 && result[0] )
 					output.push(input[i]);
 			}
-		},
-		'add': function( input, output ) {
-			var ret = 0, i;
-			for( i=0; i<input.length; i++ ) {
-				ret += input[i] instanceof Array ?
-					arguments.callee(input[i]) :
-					input[i] == +input[i] ? input[i] : 0;
-			}
-			
-			return output && output.push(ret) || ret;
 		}
 	};
 	
-	_exports['jsq'] = jsq;
-})(typeof exports=='undefined'?this:exports);
+	
+	// Expose jsq
+	// ----------
+	// Based on Lo-Dashes implementation.
+	// 
+	// Detect free variable `exports`.
+	var freeExports = typeof exports == 'object' && exports;
+
+	// Detect free variable `global` and use it as `window`.
+	var freeGlobal = typeof global == 'object' && global;
+	if( freeGlobal.global === freeGlobal ) {
+	  window = freeGlobal;
+	}
+	
+	// some AMD build optimizers, like r.js, check for specific condition patterns like the following:
+	if( typeof define == 'function' && typeof define.amd == 'object' && define.amd ) {
+	  // Expose jsq to the global object even when an AMD loader is present in
+	  // case jsq was injected by a third-party script and not intended to be
+	  // loaded as a module.
+	  window.jsq = jsq;
+
+	  // Define as an anonymous module so, through path mapping, it can be
+	  // referenced as the 'jsq' function.
+	  define(function() {
+	    return jsq;
+	  });
+	} else if( freeExports ) {
+		// Check for `exports` after `define` in case a build optimizer adds an `exports` object.
+	  if( typeof module == 'object' && module && module.exports == freeExports ) {
+	  	// In Node.js or RingoJS v0.8.0+.
+	    (module.exports = jsq).jsq = jsq;
+	  } else {
+	  	// In Narwhal or RingoJS v0.7.0-.
+	    freeExports.jsq = jsq;
+	  }
+	} else {
+	  // In a browser or Rhino.
+	  window.jsq = jsq;
+	}
+})(this);

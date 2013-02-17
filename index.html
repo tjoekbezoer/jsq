@@ -11,14 +11,14 @@
 		<h1><p>jsq Manual</p>
 </h1>
 		
-		<p>Use jsq to take control of your JSON; slice, filter, map, transform,
+		<p>Take control of your JSON; slice, filter, map, transform,
 calculate — it&#39;s up to you. All in a purpose-designed, simple language.</p>
 
 		
 		<div id="header">
-			<pre><code><span class="statement">var</span> grades = {
+			<pre><code><span class="statement">var</span> d = {
   <span class="string">"data"</span>: [
-    {<span class="string">"uid"</span>: <span class="number">1</span>, <span class="string">"grades"</span>: [<span class="number">5</span>,<span class="number">7</span>,<span class="number">9</span>]},
+    {<span class="string">"uid"</span>: <span class="number">1</span>, <span class="string">"grades"</span>: [<span class="number">5</span>,<span class="number">7</span>,<span class="number">8</span>]},
     {<span class="string">"uid"</span>: <span class="number">2</span>, <span class="string">"grades"</span>: [<span class="number">3</span>,<span class="number">9</span>,<span class="number">6</span>]}
   ],
   <span class="string">"users"</span>: {
@@ -27,8 +27,8 @@ calculate — it&#39;s up to you. All in a purpose-designed, simple language.</p
   }
 };
 
-<span class="call">jsq</span>(input, <span class="string">'.users as $u | .data[] | {$u[.uid].name: .grades}'</span>);
-<span class="comment">» [{"Bruce Willis":[5,7,9]}, {"Samuel L. Jackson":[3,9,6]}]</span></code></pre>
+<span class="call">jsq</span>(d, <span class="string">'.users as $u | .data[] | {$u[.uid].name: max(.grade)}'</span>);
+<span class="comment">» [{"Bruce Willis":8}, {"Samuel L. Jackson":9}]</span></code></pre>
 		</div>
 		
 		<section>
@@ -331,56 +331,12 @@ as those for the <code>+</code> operator (described above).</p>
 
 			</div>
 			<div>
-				<h3><p><code>sort</code>, <code>sort_by</code></p>
-</h3>
-				<p>The <code>sort</code> functions sorts its input, which must be an
-array. Values are sorted in the following order:</p>
-<ul>
-<li><code>null</code></li>
-<li><code>false</code></li>
-<li><code>true</code></li>
-<li>numbers</li>
-<li>strings, in alphabetical order (by unicode codepoint value)</li>
-<li>arrays, in lexical order</li>
-<li>objects</li>
-</ul>
-<p>The ordering for objects is a little complex: first they&#39;re
-compared by comparing their sets of keys (as arrays in
-sorted order), and if their keys are equal then the values
-are compared key by key.</p>
-<p><code>sort_by</code> may be used to sort by a particular field of an
-object, or by applying any jsq filter. <code>sort_by(foo)</code>
-compares two elements by comparing the result of <code>foo</code> on
-each element.</p>
-
-			</div>
-			<div>
-				<h3><p><code>group_by</code></p>
-</h3>
-				<p><code>group_by(.foo)</code> takes as input an array, groups the
-elements having the same <code>.foo</code> field into separate arrays,
-and produces all of these arrays as elements of a larger
-array, sorted by the value of the <code>.foo</code> field.</p>
-<p>Any jsq expression, not just a field access, may be used in
-place of <code>.foo</code>. The sorting order is the same as described
-in the <code>sort</code> function above.</p>
-
-			</div>
-			<div>
-				<h3><p><code>min</code>, <code>max</code>, <code>min_by</code>, <code>max_by</code></p>
+				<h3><p><code>min</code>, <code>max</code></p>
 </h3>
 				<p>Find the minimum or maximum element of the input array. The
 <code>_by</code> versions allow you to specify a particular field or
 property to examine, e.g. <code>min_by(.foo)</code> finds the object
 with the smallest <code>foo</code> field.</p>
-
-			</div>
-			<div>
-				<h3><p><code>unique</code></p>
-</h3>
-				<p>The <code>unique</code> function takes as input an array and produces
-an array of the same elements, in sorted order, with
-duplicates removed.</p>
 
 			</div>
 			<div>
@@ -392,7 +348,8 @@ levels. Suppose your input represents a filesystem:</p>
 <pre><code>{&quot;name&quot;: &quot;/&quot;, &quot;children&quot;: [
   {&quot;name&quot;: &quot;/bin&quot;, &quot;children&quot;: [
     {&quot;name&quot;: &quot;/bin/ls&quot;, &quot;children&quot;: []},
-    {&quot;name&quot;: &quot;/bin/sh&quot;, &quot;children&quot;: []}]},
+    {&quot;name&quot;: &quot;/bin/sh&quot;, &quot;children&quot;: []}
+  ]},
   {&quot;name&quot;: &quot;/home&quot;, &quot;children&quot;: [
     {&quot;name&quot;: &quot;/home/daan&quot;, &quot;children&quot;: [
       {&quot;name&quot;: &quot;/home/daan/jsq&quot;, &quot;children&quot;: []}
@@ -437,9 +394,10 @@ to, less than or equal to or less than their right argument
 
 			</div>
 			<div>
-				<h3><p>if(cond, then, else)</p>
+				<h3><p>if(cond, then[, else])</p>
 </h3>
-				<p><code>if(A, B, C)</code> will execute <code>B</code> if <code>A</code> evaluates as truthy, and will execute <code>C</code> otherwise.</p>
+				<p><code>if(A, B, C)</code> will execute <code>B</code> if <code>A</code> evaluates as truthy, otherwise it will optionally
+execute <code>C</code>.</p>
 <p>Checking for false or null is a simpler notion of
 &quot;truthiness&quot; than is found in Javascript or Python, but it
 means that you&#39;ll sometimes have to be more explicit about
@@ -663,6 +621,22 @@ that we did before:</p>
 			
 			<hr/>
 		</section>
+		<section>
+			<h2><p>Acknowledgements &amp; thanks</p>
+</h2>
+			<ul>
+<li>Syntax and documentation inspired by the excellent <a href="//stedolan.github.com/jq">jq project</a></li>
+</ul>
+
+			
+			
+			<hr/>
+		</section>
+		
+		<div id="legal">
+			jsq is licensed under the <a href="//raw.github.com/tjoekbezoer/jsq/master/LICENSE-MIT">MIT license</a> (code)
+			and the <a href="http://creativecommons.org/licenses/by/3.0/">CC-BY-3.0 license</a> (docs).
+		</div>
 	</div>
 </body>
 </html>

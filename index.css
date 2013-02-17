@@ -48,6 +48,24 @@ html, body {
 		color: #4B9AD0;
 	}
 
+#legal {
+	font-size: 0.8em;
+	margin-bottom: 60em;
+	margin-top: 3em;
+	text-align: center;
+}
+
+
+a {
+	border-bottom: 1px solid #D2D2D2;
+	color: inherit;
+	padding: 0px 1px;
+	text-decoration: none;
+}
+a:hover {
+	border-bottom-color: inherit;
+}
+
 h1,
 h2,
 h3 {
@@ -72,16 +90,6 @@ h1 + p {
 section {
 	
 }
-	section a {
-		border-bottom: 1px solid #D2D2D2;
-		color: inherit;
-		padding: 0px 1px;
-		text-decoration: none;
-	}
-	section a:hover {
-		border-bottom-color: inherit;
-	}
-	
 	section h2,
 	section hr {
 		font-size: 1.7em;

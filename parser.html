@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>JSQ Parser</title>
+		
+		<style type="text/css">
+			input[type="text"] {
+				border: 1px solid #C0C0C0;
+				font-size: 14px;
+				margin: 0;
+				padding: 5px 3px;
+				width: 100%;
+				-webkit-box-sizing: border-box;
+			}
+			input[type="text"]:focus {
+				outline: none;
+			}
+			
+			#lexer span,
+			#parser span {
+				border: 1px solid #000;
+				font-family: 'Courier New';
+				font-size: 12px;
+				padding: 1px 2px;
+			}
+			#lexer span.op_uny,
+			#lexer span.op_arm,
+			#lexer span.op_cmp,
+			#lexer span.op_ass,
+			#lexer span.ctl {
+				background-color: deepskyblue;
+			}
+			#lexer span.vrb {
+				background-color: orchid;
+			}
+			#lexer span.id {
+				background-color: yellow;
+			}
+			#lexer span.bln,
+			#lexer span.nil,
+			#lexer span.udf,
+			#lexer span.itg,
+			#lexer span.flt {
+				background-color: orangered;
+			}
+			#lexer span.str {
+				background-color: orange;
+			}
+			#lexer span.wsp,
+			#lexer span.eof {
+				background-color: mistyrose;
+			}
+			#parser span.error {
+				background-color: lightpink;
+				border: 1px solid firebrick;
+				color: firebrick;
+			}
+			
+			#lexer {
+				margin-bottom: 20px;
+			}
+			#parser {
+				font-family: Helvetica, sans-serif;
+				font-size: 10px;
+				overflow: hidden;
+				padding: 2px 0px;
+			}
+				#parser .block {
+					background-color: #FFF;
+					border: 1px solid gray;
+					border-radius: 5px;
+					display: inline-block;
+					overflow: hidden;
+					vertical-align: center;
+				}
+				#parser .block.over {
+					background-color: #C1CEF2;
+				}
+					#parser .block.over > h3 {
+						background-color: #839CE6;
+					}
+					#parser .block h3 {
+						background-color: lightgray;
+						border-bottom: 1px solid gray;
+						color: #000;
+						font-size: 11px;
+						font-weight: 700;
+						margin: 0px;
+						padding: 2px 5px;
+					}
+					#parser .block p,
+					#parser .block span {
+						background-color: lightgray;
+						border: 1px solid blue;
+						font-size: 14px;
+						font-weight: bold;
+						margin: 2px 5px;
+						padding: 1px 2px;
+					}
+					#parser .block p {
+						float: left;
+					}
+					#parser .block .block {
+						margin: 5px;
+					}
+			#split {
+				overflow: hidden;
+				margin: 10px -8px;
+			}
+				#split > div {
+					box-sizing: border-box;
+					padding: 0px 10px;
+				}
+				div.bar {
+					font-size: 12px;
+					font-family: Helvetica;
+					height: 25px;
+					line-height: 25px;
+					text-align: right;
+				}
+				#input,
+				#output {
+					border: 1px solid black;
+					width: 100%;
+					height: 500px;
+					margin: 0;
+					padding: 0;
+				}
+				#input {
+					position: relative !important;
+				}
+				#output {
+					font-family: Monaco, Menlo, 'Ubuntu Mono', Consolas, source-code-pro, monospace;
+					font-size: 12px;
+					overflow: auto;
+				}
+				#inputContainer {
+					float: left;
+					overflow: hidden;
+					width: 50%;
+				}
+				#outputContainer {
+					float: left;
+					width: 50%;
+				}
+		</style>
+	</head>
+	<body>
+		<input type="text" id="query"/>
+		
+		<div id="lexer"></div>
+		<div id="parser">
+			<div class="block"></div>
+		</div>
+		<div id="split">
+			<div id="inputContainer">
+				<div class="bar">
+					Bookmarks: <select id="bookmarks"></select>
+				</div>
+				<div id="input"></div>
+			</div>
+			<div id="outputContainer">
+				<div class="bar">
+					<span id="timer"></span> milliseconds
+				</div>
+				<div id="output"></div>
+			</div>
+		</div>
+		
+		<div style="display: none;" id="bookmarkData">
+<div data-name="Simple Object">{
+	"first": 1,
+	"second": 2,
+	"third": 3,
+	"fourth": [1,2,3,4,5,6,7,8],
+	"fifth": {
+		"foo": "bar",
+		"bar": 2
+	},
+	"sixth": ["foo"]
+}</div>
+<div data-name="Multiple Object">[
+	{
+		"first": 1,
+		"second": 2,
+		"third": 3
+	}, {
+		"first": 4,
+		"second": 5
+	}
+]</div>
+<div data-name="Recursive Object">{
+	"name": "/", "children": [{
+		"name": "/bin", "children": [
+			{"name": "/bin/ls", "children": []},
+			{"name": "/bin/sh", "children": []}
+		]
+	}, {
+		"name": "/home", "children": [{
+			"name": "/home/daan", "children": [
+				{"name": "/home/daan/jsq", "children": []}
+			]
+		}]
+	}]
+}</div>
+<div data-name="Simple Array">[1,2,3,4,5,6]</div>
+		</div>
+		
+		<script src="ace/src-min-noconflict/ace.js"></script>
+		<script>
+		    var editor = ace.edit("input");
+		    editor.getSession().setMode("ace/mode/json");
+		    editor.setShowPrintMargin(false);
+		</script>
+		
+		<script type="text/javascript" src="zepto.js"></script>
+		<script type="text/javascript" src="jsq.js"></script>
+		<script type="text/javascript">
+			var input = document.getElementById('query'),
+				lexer = document.getElementById('lexer'),
+				bookmarks = $('#bookmarks'),
+				// Global parser object, is assigned in keyup event
+				parser;
+			
+			// Bring bookmarks to life
+			var _bookmarks = [];
+			$('#bookmarkData > div').each(function( i, item ) {
+				_bookmarks.push(item.innerHTML);
+				bookmarks.append('<option value='+i+'>'+item.getAttribute('data-name')+'</option>');
+			});
+			bookmarks.on('change', function() {
+				editor.getSession().setValue( _bookmarks[this.value] );
+				input.onkeyup({target:input}, true);
+			});
+			editor.getSession().setValue(_bookmarks[0]);
+			
+			// Get reference to element used to display parser blocks
+			var blockEl = $('.block');
+			blockEl.remove();
+			
+			$('#parser').on('mouseover', '.block', function() {
+				return !$(this).addClass('over');
+			}).on('mouseout', '.block', function() {
+				return !$(this).removeClass('over');
+			});
+			
+			input.focus();
+			input.onkeyup = function( event, force ) {
+				if( event.keyCode == 27 ) {
+					input.value = '';
+				} else if( event.keyCode != 13 && !force) {
+					return;
+				}
+				
+				_updateHash();
+				lexer.innerHTML = '';
+				
+				try {
+					var query = event.target.value,
+						tokens = new jsq.Lexer(query),
+						token;
+					
+					// Lexer
+					while( token = tokens.current() ) {
+						var type = _type(token.type);
+						
+						lexer.innerHTML += '<span class='+type+'>'+token.data+'</span>';
+						tokens.next();
+					}
+					if( lexer.innerHTML )
+						lexer.innerHTML += '<span class=eof>&lt;EOF&gt;</span>';
+					
+					// Parser
+					var current = $('#parser');
+					current.empty();
+					
+					(function( obj ) {
+						var branch = obj.tree || obj,
+							b = blockEl.clone();
+						
+						// Global access
+						if( obj.tree )
+							parser = obj;
+						
+						b.append('<h3>'+branch.name+'('+branch.index+')</h3>');
+						current.append(b);
+						current = b;
+						
+						if( branch.children.length ) {
+							b.append(branch.value != null ?
+								'<span>'+branch.value+'</span>':
+								''
+							);
+							for(
+								var i=0, c=branch.children, l=c.length, e;
+								i<l && (e=c[i]);
+								i++
+							) {
+								b.append(arguments.callee(e));
+							}
+						} else {
+							b.append(branch.value != null ?
+								'<p>'+branch.value+'</p>':
+								''
+							);
+						}
+						
+						return b;
+					})( (new jsq.Parser(query)).parse() );
+					
+				} catch(e) {
+					$('#parser').html('<span class=error>'+e.toString()+'</span>');
+				}
+				
+				// Query
+				try {
+					$('#output').empty();
+					var data = JSON.parse(editor.getSession().getValue() || null),
+						start = window.performance && performance.now() || +new Date;
+					window.output = jsq(data, query);
+					var end = window.performance && performance.now() || +new Date;
+					$('#timer').html((end-start).toFixed(3));
+					$('#output').html(JSON.stringify(output));
+				} catch(e) {
+					if( e.message )
+						throw e;
+					else
+						console.error(e);
+				}
+			};
+			
+			// Auto-set input field and bookmarks dropdown
+			var hash = document.location.hash.substr(1).split('&');
+			if( hash.length > 1 ) {
+				bookmarks.val(hash.shift());
+				bookmarks.trigger('change');
+				input.value = hash.join('&');
+			}
+			input.onkeyup({target:input}, true);
+			
+			
+			
+			function _type( typeId ) {
+				for( type in jsq.Lexer.tokenTypes ) {
+					if( jsq.Lexer.tokenTypes[type] == typeId )
+						return type;
+				}
+				return null;
+			}
+			function _updateHash() {
+				document.location.hash = bookmarks.val() +'&'+ input.value;
+			}
+			
+		</script>
+	</body>
+</html>
