@@ -22,6 +22,11 @@
 		"sixth": ["first","second"],
 		"seventh": ["foo", "bar"]
 	};
+	var complex2 = [{
+		"first": [1,2,3]
+	}, {
+		"first": [4,5,6]
+	}];
 	var multiple = [{
 		"first": 1,
 		"second": 2,
@@ -118,6 +123,9 @@
 		deepEqual(jsq(complex, '.fifth | .baz'), jsq(complex, '.fifth.baz'));
 		deepEqual(jsq(complex, '.[]'), jsq(complex, '. | .[]'));
 		deepEqual(jsq(complex, '.fifth[]'), jsq(complex, '.fifth | .[]'));
+		
+		eq(complex2, '.[] | .first | add', [6,15], 'Multiple pipes');
+		eq(complex2, '.[] | (.first | add)', [6,15], 'Multiple pipes but nested with parentheses yields same result');
 	});
 
 	test('executes comma separated values correctly', function() {
@@ -146,6 +154,8 @@
 			'pos': true,
 			'last': -2
 		}], 'With simple values');
+		eq(complex, '{first: .second, second: (.fourth | add)}', [{first: 2, second: 36}], 'With expressions as values');
+		eq(complex, '.sixth as $var | {.fifth.foo: 1, $var[1]: 2}', [{bar: 1, second: 2}], 'With expressions as keys');
 		eq([1,2], '{first: .}', [{'first': [1,2]}], 'Using filter as element value');
 		eq([1,2], '{first: .[]}', [{'first': 1}, {'first': 2}], 'Using filter that produces multiple results as value');
 		eq('{"first":1, "second":(1,2)}', [{

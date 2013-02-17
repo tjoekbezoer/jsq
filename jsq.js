@@ -593,10 +593,12 @@
 		while( (token = this.tokens.skip(true)) && token.data != '}' ) {
 			key_switch:
 			switch( token.type ) {
+				// A key can only be a specific group of tokens
+				case _t.ctl:
+				case _t.vrb:
 				case _t.id:
 				case _t.itg:
 				case _t.str:
-				case _t.ctl:
 					if( token.type == _t.ctl && token.data == ',' ) {
 						// Comma found. Look for another element, or throw when there is none
 						// or this is a double comma.
@@ -616,12 +618,16 @@
 						// Element is found. The key can be a literal, a filter, or a complex
 						// expression in parenthesis that returns one result
 						this.add('element');
-						if( token.type != _t.ctl ) {
-							this.addup('key').value = token.data;
-						} else {
-							this.add('key');
-							this.parse();
-							this.up();
+						switch( token.type ) {
+							case _t.itg:
+							case _t.str:
+							case _t.id:
+								this.addup('key').value = token.data;
+								break;
+							default:
+								this.add('key');
+								this.parse();
+								this.up();
 						}
 						
 						if( (peek = this.tokens.peek(true)) && peek.data == ':' ) {
@@ -872,7 +878,8 @@
 			case 'pipe':
 				input = _expression(input, output, branch.children[0]);
 				input = input.splice(0,input.length);
-				_expression(input, output, branch.children[1]);
+				for( i=0; i<input.length; i++ )
+					_expression([input[i]], output, branch.children[1]);
 				break;
 			case 'unary':
 				_unary(input, output, branch);
