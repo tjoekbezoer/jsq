@@ -1,33 +1,36 @@
-headline: jsq Manual
+headline: jsq
 intro: |
   
-  Use jsq to take control of your JSON; slice, filter, map, transform,
+  Take control of your JSON; slice, filter, map, transform,
   calculate — it's up to you. All in a purpose-designed, simple language.
 
 sections:
-  - title: Action
+  - title: What's next
     body: |
       
-      * Download [jsq v0.1.0][download] — not yet production ready!
+      * Download [**jsq v0.1.0**][download] — not yet production ready!
+      * Take jsq for a spin using my [**internal test tool**][parser]
       * Run the [test suite][test]
       * Check out the [project on GitHub][project]
       
       [download]: //raw.github.com/tjoekbezoer/jsq/master/jsq.js
+      [parser]: //tjoekbezoer.github.com/jsq/parser.html
       [test]: //tjoekbezoer.github.com/jsq/test
       [project]: //www.github.com/tjoekbezoer/jsq
   
-  - title: Invoking jsq
+  - title: Using jsq
     body: |
       
-      A jsq program is a "filter": it takes an input, and produces an
-      output. There are a lot of builtin filters for extracting a
-      particular field of an object, or converting a number to a string,
-      or various other standard tasks.
-
-      Filters can be combined in various ways — you can pipe the output of
-      one filter into another filter, or collect the output of a filter
-      into an array.
+      Jsq allows you to mold your JSON data the way you want to. It does this
+      through it's own query language, called *jsq*. A jsq query is made up of
+      filters. A filter takes an input, and produces an output. Every filter is essentially
+      a little program performing a certain task. There's plenty of built-in functionality
+      that allows you to slice, filter, map, transform etc.
       
+      Filters can be combined in various ways to up their power — you can pipe the output of
+      one filter into another (like in UNIX), or collect the output of a filter
+      into an array for example.
+    
       Some filters produce multiple results, for instance there's one that
       produces all the elements of its input array. Piping that filter
       into a second runs the second filter for each element of the
@@ -41,7 +44,36 @@ sections:
       both and combine the results. So, you can implement an averaging
       filter as `add / length` — feeding the input array both to the `add`
       filter and the `length` filter and dividing the results.
-
+      
+      
+      ## Calling jsq
+          
+      The jsq function is defined as follows:
+      
+      ```javascript
+      var output = jsq( input..., query, iterator(value, key, output)?, context  ? )
+      ```
+      
+      An arbitrary number of `input` objects can be passed (not required) after which a `query`
+      string is expected. Finally an optional `iterator` function and calling `context` can be
+      defined. Jsq always returns a results array, even when there's only a single or no results.
+      
+      The iterator function is called for every result. It's passed 3 arguments; the value of the
+      result, the position of the result in the result array, and the complete result array. With
+      the last argument, the iterator is able to manipulate the result array that's returned by jsq.
+      
+      
+      ## Good to know
+      
+      Jsq tries to mimic JavaScript's behavior as much as possible, especially with regards to
+      data types,  comparing values and logical operators. For example, `"1" == 1` will return
+      true while `"1" === 1` will return false,  `2 && 0` will return 0, and `false || 2` will
+      return 2.
+      
+      However, in some cases jsq's response will be different. `.foo = 2` will for instance not
+      return the same as JavaScript's `foo = 2`. The latter will evaluate to 2, while jsq
+      will return the entire object in which element '*foo*' now has value 2.
+  
   - title: Basic filters
     entries:
       - title: "`.`"
@@ -50,10 +82,6 @@ sections:
           The absolute simplest (and least interesting) filter
           is `.`. This is a filter that takes its input and
           produces it unchanged as output.
-
-          Since jsq by default pretty-prints all output, this trivial
-          program can be a useful way of formatting JSON output from,
-          say, `curl`.
 
         examples:
           - program: '.'
@@ -65,7 +93,7 @@ sections:
           
           The simplest *useful* filter is .foo. When given a
           JSON object (aka dictionary or hash) as input, it produces
-          the value at the key "foo", or null if there's none present.
+          the value at the key "foo", or nothing if there's none present.
 
         examples:
           - program: '.foo'
@@ -204,7 +232,9 @@ sections:
           input (remember, all filters have an input and an
           output).
           
-              {foo: .bar}
+          ```jsq
+          {foo: .bar}
+          ```
           
           will produce the JSON object `{"foo": 42}` if given the JSON
           object `{"bar":42, "baz":43}`. You can use this to select
@@ -212,32 +242,49 @@ sections:
           with "user", "title", "id", and "content" fields and you
           just want "user" and "title", you can write
           
-              {user: .user, title: .title}
+          ```jsq
+          {user: .user, title: .title}
+          ```
           
           Because that's so common, there's a shortcut syntax: `{user, title}`.
           
           If one of the expressions produces multiple results,
           multiple dictionaries will be produced. If the input's
           
-              {"user":"tjoekbezoer","titles":["JSQ Primer", "More JSQ"]}
+          ```javascript
+          {
+            "user":"tjoekbezoer",
+            "titles":["JSQ Primer", "More JSQ"]
+          }
+          ```
           
           then the expression
           
-              {user, title: .titles[]}
+          ```jsq
+          {user, title: .titles[]}
+          ```
           
           will produce two outputs: 
           
-              {"user":"tjoekbezoer", "title": "JSQ Primer"}
-              {"user":"tjoekbezoer", "title": "More JSQ"}
+          ```javascript
+          [
+            {"user":"tjoekbezoer", "title": "JSQ Primer"},
+            {"user":"tjoekbezoer", "title": "More JSQ"}
+          ]
+          ```
           
           Putting parentheses around the key means it will be evaluated as an
           expression. With the same input as above,
           
-              {(.user): .titles}
+          ```jsq
+          {(.user): .titles}
+          ```
           
           produces
           
-              {"tjoekbezoer": ["JSQ Primer", "More JSQ"]}
+          ```javascript
+          {"tjoekbezoer": ["JSQ Primer", "More JSQ"]}
+          ```
           
           Simple expressions, like a single filter, can also be used without the parentheses.
           
@@ -435,56 +482,56 @@ sections:
             input: '[]'
             output: ["null"]
             
-      - title: "`sort`, `sort_by`"
-        body: |
+      # - title: "`sort`, `sort_by`"
+      #   body: |
           
-          The `sort` functions sorts its input, which must be an
-          array. Values are sorted in the following order:
+      #     The `sort` functions sorts its input, which must be an
+      #     array. Values are sorted in the following order:
 
-          * `null`
-          * `false`
-          * `true`
-          * numbers
-          * strings, in alphabetical order (by unicode codepoint value)
-          * arrays, in lexical order
-          * objects
+      #     * `null`
+      #     * `false`
+      #     * `true`
+      #     * numbers
+      #     * strings, in alphabetical order (by unicode codepoint value)
+      #     * arrays, in lexical order
+      #     * objects
 
-          The ordering for objects is a little complex: first they're
-          compared by comparing their sets of keys (as arrays in
-          sorted order), and if their keys are equal then the values
-          are compared key by key.
+      #     The ordering for objects is a little complex: first they're
+      #     compared by comparing their sets of keys (as arrays in
+      #     sorted order), and if their keys are equal then the values
+      #     are compared key by key.
 
-          `sort_by` may be used to sort by a particular field of an
-          object, or by applying any jsq filter. `sort_by(foo)`
-          compares two elements by comparing the result of `foo` on
-          each element.
+      #     `sort_by` may be used to sort by a particular field of an
+      #     object, or by applying any jsq filter. `sort_by(foo)`
+      #     compares two elements by comparing the result of `foo` on
+      #     each element.
 
-        examples:
-          - program: 'sort'
-            input: '[8,3,null,6]'
-            output: ['[null,3,6,8]']
-          - program: 'sort_by(.foo)'
-            input: '[{"foo":4, "bar":10}, {"foo":3, "bar":100}, {"foo":2, "bar":1}]'
-            output: ['[{"foo":2, "bar":1}, {"foo":3, "bar":100}, {"foo":4, "bar":10}]']
+      #   examples:
+      #     - program: 'sort'
+      #       input: '[8,3,null,6]'
+      #       output: ['[null,3,6,8]']
+      #     - program: 'sort_by(.foo)'
+      #       input: '[{"foo":4, "bar":10}, {"foo":3, "bar":100}, {"foo":2, "bar":1}]'
+      #       output: ['[{"foo":2, "bar":1}, {"foo":3, "bar":100}, {"foo":4, "bar":10}]']
 
-      - title: "`group_by`"
-        body: |
+      # - title: "`group_by`"
+      #   body: |
           
-          `group_by(.foo)` takes as input an array, groups the
-          elements having the same `.foo` field into separate arrays,
-          and produces all of these arrays as elements of a larger
-          array, sorted by the value of the `.foo` field.
+      #     `group_by(.foo)` takes as input an array, groups the
+      #     elements having the same `.foo` field into separate arrays,
+      #     and produces all of these arrays as elements of a larger
+      #     array, sorted by the value of the `.foo` field.
 
-          Any jsq expression, not just a field access, may be used in
-          place of `.foo`. The sorting order is the same as described
-          in the `sort` function above.
+      #     Any jsq expression, not just a field access, may be used in
+      #     place of `.foo`. The sorting order is the same as described
+      #     in the `sort` function above.
 
-        examples:
-          - program: 'group_by(.foo)'
-            input: '[{"foo":1, "bar":10}, {"foo":3, "bar":100}, {"foo":1, "bar":1}]'
-            output: ['[[{"foo":1, "bar":10}, {"foo":1, "bar":1}], [{"foo":3, "bar":100}]]']
+      #   examples:
+      #     - program: 'group_by(.foo)'
+      #       input: '[{"foo":1, "bar":10}, {"foo":3, "bar":100}, {"foo":1, "bar":1}]'
+      #       output: ['[[{"foo":1, "bar":10}, {"foo":1, "bar":1}], [{"foo":3, "bar":100}]]']
 
-      - title: "`min`, `max`, `min_by`, `max_by`"
+      - title: "`min`, `max`"
         body: |
           
           Find the minimum or maximum element of the input array. The
@@ -500,17 +547,17 @@ sections:
             input: '[{"foo":1, "bar":14}, {"foo":2, "bar":3}]'
             output: ['{"foo":2, "bar":3}']
 
-      - title: "`unique`"
-        body: |
+      # - title: "`unique`"
+      #   body: |
           
-          The `unique` function takes as input an array and produces
-          an array of the same elements, in sorted order, with
-          duplicates removed.
+      #     The `unique` function takes as input an array and produces
+      #     an array of the same elements, in sorted order, with
+      #     duplicates removed.
 
-        examples:
-          - program: 'unique'
-            input: '[1,2,5,3,5,3,1,3]'
-            output: ['[1,2,3,5]']
+      #   examples:
+      #     - program: 'unique'
+      #       input: '[1,2,5,3,5,3,1,3]'
+      #       output: ['[1,2,3,5]']
 
       - title: "`recurse`"
         body: |
@@ -519,23 +566,28 @@ sections:
           recursive structure, and extract interesting data from all
           levels. Suppose your input represents a filesystem:
 
-              {"name": "/", "children": [
-                {"name": "/bin", "children": [
-                  {"name": "/bin/ls", "children": []},
-                  {"name": "/bin/sh", "children": []}]},
-                {"name": "/home", "children": [
-                  {"name": "/home/daan", "children": [
-                    {"name": "/home/daan/jsq", "children": []}
-                  ]}
-                ]}
+          ```javascript
+          {"name": "/", "children": [
+            {"name": "/bin", "children": [
+              {"name": "/bin/ls", "children": []},
+              {"name": "/bin/sh", "children": []}
+            ]},
+            {"name": "/home", "children": [
+              {"name": "/home/daan", "children": [
+                {"name": "/home/daan/jsq", "children": []}
               ]}
+            ]}
+          ]}
+          ```
           
           Now suppose you want to extract all of the filenames
           present. You need to retrieve `.name`, `.children[].name`,
           `.children[].children[].name`, and so on. You can do this
           with:
 
-              recurse(.children[]) | .name
+          ```jsq
+          recurse(.children[]) | .name
+          ```
 
         examples:
           - program: 'recurse(.foo[])'
@@ -580,10 +632,11 @@ sections:
             input: 2
             output: ['true']
       
-      - title: if(cond, then, else)
+      - title: if(cond, then[, else])
         body: |
 
-          `if(A, B, C)` will execute `B` if `A` evaluates as truthy, and will execute `C` otherwise.
+          `if(A, B, C)` will execute `B` if `A` evaluates as truthy, otherwise it will optionally
+          execute `C`.
           
           Checking for false or null is a simpler notion of
           "truthiness" than is found in Javascript or Python, but it
@@ -659,14 +712,9 @@ sections:
       variable (as a function parameter, object member, or whatever) in
       which to place the data.
 
-      It is also possible to define functions in jsq, although this is
-      is a feature whose biggest use is defining jsq's standard library
-      (many jsq functions such as `map` and `find` are in fact written
-      in jsq).
-
-      Finally, jsq has a `fold` operation, which is very powerful but a
-      bit tricky. Again, it's mostly used internally, to define some
-      useful bits of jsq's standard library.
+    # Finally, jsq has a `fold` operation, which is very powerful but a
+    # bit tricky. Again, it's mostly used internally, to define some
+    # useful bits of jsq's standard library.
 
     entries:
       - title: Variables
@@ -692,7 +740,9 @@ sections:
           variable names start with `$`. Here's a slightly uglier version of the
           array-averaging example:
           
-              length as $array_length | add / $array_length
+          ```jsq
+          length as $array_length | add / $array_length
+          ```
           
           We'll need a more complicated problem to find a situation where using
           variables actually makes our lives easier.
@@ -702,21 +752,34 @@ sections:
           fields, and another object which is used to map author usernames to
           real names. Our input looks like:
           
-              {"posts": [{"title": "Frist psot", "author": "anon"},
-                         {"title": "A well-written article", "author": "person1"}],
-               "realnames": {"anon": "Anonymous Coward",
-                             "person1": "Person McPherson"}}
+          ```javascript
+          {
+            "posts": [
+              {"title": "Frist psot", "author": "anon"},
+              {"title": "A well-written article", "author": "person1"}],
+            "realnames": {
+              "anon": "Anonymous Coward",
+              "person1": "Person McPherson"
+            }
+          }
+          ```
           
           We want to produce the posts with the author field containing a real
           name, as in:
           
-              {"title": "Frist psot", "author": "Anonymous Coward"}
-              {"title": "A well-written article", "author": "Person McPherson"}
+          ```javascript
+          [
+            {"title": "Frist psot", "author": "Anonymous Coward"},
+            {"title": "A well-written article", "author": "Person McPherson"}
+          ]
+          ```
           
           We use a variable, $names, to store the realnames object, so that we
           can refer to it later when looking up author usernames:
           
-              .realnames as $names | .posts[] | {title, author: $names[.author]}
+          ```jsq
+          .realnames as $names | .posts[] | {title, author: $names[.author]}
+          ```
           
           The expression "foo as $x" runs foo, puts the result in $x,
           and returns the original input. Apart from the side-effect
@@ -727,38 +790,40 @@ sections:
             input: '{"foo":10, "bar":200}'
             output: ['210']
 
-      - title: Fold
-        body: |
+      # - title: Fold
+      #   body: |
         
-          The `fold` syntax in jsq allows you to combine all of the
-          results of an expression by accumulating them into a single
-          answer. As an example, we'll pass `[3,2,1]` to this expression:
+      #     The `fold` syntax in jsq allows you to combine all of the
+      #     results of an expression by accumulating them into a single
+      #     answer. As an example, we'll pass `[3,2,1]` to this expression:
 
-              fold 0 as $sum (.[] | $sum + .)
+      #     ```jsq
+      #     fold 0 as $sum (.[] | $sum + .)
+      #     ```
           
-          The variable `$sum` is first given the value `0`. The body
-          of the fold (i.e. `.[] | $sum + .`) is evaluated. `.[]`
-          produces three results, `3`, `2`, and `1`. For the first
-          one, `$sum + .` gives `3`.
+      #     The variable `$sum` is first given the value `0`. The body
+      #     of the fold (i.e. `.[] | $sum + .`) is evaluated. `.[]`
+      #     produces three results, `3`, `2`, and `1`. For the first
+      #     one, `$sum + .` gives `3`.
 
-          Having produced this answer, jsq backtracks to find the next
-          result as per usual. However, this time, `$sum` is set to
-          the previous value of the body, so `$sum + .` gives
-          `5`. After the final backtracking, `$sum + .` gives
-          `6`. This final value is used as the value of the entire
-          `fold` expression, so the above filter returns `6`.
+      #     Having produced this answer, jsq backtracks to find the next
+      #     result as per usual. However, this time, `$sum` is set to
+      #     the previous value of the body, so `$sum + .` gives
+      #     `5`. After the final backtracking, `$sum + .` gives
+      #     `6`. This final value is used as the value of the entire
+      #     `fold` expression, so the above filter returns `6`.
 
-          More formally, in order to evaluate `fold INIT as $VAR
-          (BODY)`, jsq first sets `$VAR` to the value of `INIT`. It
-          then runs through `BODY`. Each time `BODY` produces a value,
-          `$VAR` is set to that value and jsq backtracks to find the
-          next one. When `BODY` stops producing values, the final
-          value of `$VAR` is the result of the entire expression.
+      #     More formally, in order to evaluate `fold INIT as $VAR
+      #     (BODY)`, jsq first sets `$VAR` to the value of `INIT`. It
+      #     then runs through `BODY`. Each time `BODY` produces a value,
+      #     `$VAR` is set to that value and jsq backtracks to find the
+      #     next one. When `BODY` stops producing values, the final
+      #     value of `$VAR` is the result of the entire expression.
 
-        examples:
-          - program: 'fold 0 as $sum (.[] | $sum + .)'
-            input: '[10,2,5,3]'
-            output: ['20']
+      #   examples:
+      #     - program: 'fold 0 as $sum (.[] | $sum + .)'
+      #       input: '[10,2,5,3]'
+      #       output: ['20']
       
 
   - title: Assignment
@@ -787,7 +852,9 @@ sections:
           1. There is no notion of "modifying" or "changing" something
           in jsq - all jsq values are immutable. For instance,
           
-           .foo = .bar | .foo.baz = 1
+          ```jsq
+          .foo = .bar | .foo.baz = 1
+          ```
           
           will not have the side-effect of setting .bar.baz to be set
           to 1, as the similar-looking program in Javascript, Python,
@@ -811,12 +878,13 @@ sections:
           the old value through this expression. For instance, .foo |= .+1 will
           build an object with the "foo" field set to the input's "foo" plus 1.
           
-          This example should show the difference between '=' and '|=':
+          This example should show the difference between '=' and '|='. Provide input
           
-          Provide input '{"a": {"b": 10}, "b": 20}' to the programs:
+          ```javascript
+          {"a": {"b": 10}, "b": 20}
+          ```
           
-          .a = .b  
-          .a |= .b
+          to the programs `.a = .b` and `.a |= .b`
           
           The former will set the "a" field of the input to the "b" field of the
           input, and produce the output {"a": 20}. The latter will set the "a"
@@ -832,7 +900,7 @@ sections:
           - program: .foo += 1
             input: '{"foo": 42}'
             output: ['{"foo": 43}']
-        
+      
       - title: Complex assignments
         body: |
           Lots more things are allowed on the left-hand side of a jsq assignment
@@ -840,13 +908,17 @@ sections:
           the left hand side, and it's no surprise that array accesses work just
           as well:
           
-              .posts[0].title = "JSQ Manual"
+          ```jsq
+          .posts[0].title = "JSQ Manual"
+          ```
           
           What may come as a surprise is that the expression on the left may
           produce multiple results, referring to different points in the input
           document:
           
-              .posts[].comments |= . + ["this is great"]
+          ```jsq
+          .posts[].comments |= . + ["this is great"]
+          ```
           
           That example appends the string "this is great" to the "comments"
           array of each post in the input (where the input is an object with a
@@ -864,10 +936,21 @@ sections:
           want to comment on the posts written by "tjoekbezoer". We can find those
           posts using the "select" function described earlier:
           
-              .posts[] | select(.author == "tjoekbezoer")
+          ```jsq
+          .posts[] | select(.author == "tjoekbezoer")
+          ```
           
           The paths provided by this operation point to each of the posts that
           "tjoekbezoer" wrote, and we can comment on each of them in the same way
           that we did before:
           
-              (.posts[] | select(.author == "tjoekbezoer") | .comments) |= . + ["terrible."]
+          ```jsq
+          (.posts[] | select(.author == "tjoekbezoer") | .comments) |= . + ["terrible."]
+          ```
+  
+  - title: Acknowledgements & thanks
+    body: |
+      
+      * Syntax and documentation inspired by the excellent [jq project](//stedolan.github.com/jq)
+      * Above-the-fold design inspired by [Lo-Dash](http://lodash.com)
+      * Syntax highlighting with [Prism](http://prismjs.com)

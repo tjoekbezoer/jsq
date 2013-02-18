@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>jsq - JSON Wrangler</title>
+	<title>jsq - The JSON wrangler</title>
 	
 	<meta http-equiv="content-type" content="text/html; charset=utf-8">
 	<link rel="stylesheet" type="text/css" href="index.css">
+	<link rel="stylesheet" type="text/css" href="prism.css">
 </head>
 <body>
 	<div id="all">
@@ -13,20 +14,25 @@
 		{{{intro}}}
 		
 		<div id="header">
-			<pre><code><span class="statement">var</span> grades = {
-  <span class="string">"data"</span>: [
-    {<span class="string">"uid"</span>: <span class="number">1</span>, <span class="string">"grades"</span>: [<span class="number">5</span>,<span class="number">7</span>,<span class="number">9</span>]},
-    {<span class="string">"uid"</span>: <span class="number">2</span>, <span class="string">"grades"</span>: [<span class="number">3</span>,<span class="number">9</span>,<span class="number">6</span>]}
+<pre class="lang-javascript"><code>var i = {
+  "data": [
+    {"uid": 1, "grades": [5,7,8]},
+    {"uid": 2, "grades": [3,9,6]}
   ],
-  <span class="string">"users"</span>: {
-    <span class="string">"1"</span>: {<span class="string">"name"</span>: <span class="string">"Bruce Willis"</span>},
-    <span class="string">"2"</span>: {<span class="string">"name"</span>: <span class="string">"Samuel L. Jackson"</span>}
+  "users": {
+    1: {"name": "Bruce Willis"},
+    2: {"name": "Samuel L. Jackson"}
   }
 };
 
-<span class="call">jsq</span>(input, <span class="string">'.users as $u | .data[] | {$u[.uid].name: .grades}'</span>);
-<span class="comment">» [{"Bruce Willis":[5,7,9]}, {"Samuel L. Jackson":[3,9,6]}]</span></code></pre>
+jsq(i, '.users as $u | .data[] | {$u[.uid].name: max(.grades)}');
+// » [{"Bruce Willis":8}, {"Samuel L. Jackson":9}]</pre></code>
+			
+			
 		</div>
+		
+		<iframe id="watchButton" src="http://ghbtns.com/github-btn.html?user=tjoekbezoer&repo=jsq&type=watch"
+		  allowtransparency="true" frameborder="0" scrolling="0" width="50" height="20"></iframe>
 		
 		{{#sections}}
 		<section>
@@ -43,6 +49,13 @@
 			<hr/>
 		</section>
 		{{/sections}}
+		
+		<div id="legal">
+			jsq is licensed under the <a href="//raw.github.com/tjoekbezoer/jsq/master/LICENSE-MIT">MIT license</a> (code)
+			and the <a href="http://creativecommons.org/licenses/by/3.0/">CC-BY-3.0 license</a> (docs).
+		</div>
 	</div>
+	
+	<script type="text/javascript" src="prism.min.js"></script>
 </body>
 </html>
