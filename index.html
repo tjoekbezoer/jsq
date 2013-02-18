@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>jsq - JSON Wrangler</title>
+	<title>jsq - The JSON wrangler</title>
 	
 	<meta http-equiv="content-type" content="text/html; charset=utf-8">
 	<link rel="stylesheet" type="text/css" href="index.css">
+	<link rel="stylesheet" type="text/css" href="prism.css">
 </head>
 <body>
 	<div id="all">
-		<h1><p>jsq Manual</p>
+		<h1><p>jsq</p>
 </h1>
 		
 		<p>Take control of your JSON; slice, filter, map, transform,
@@ -16,26 +17,32 @@ calculate — it&#39;s up to you. All in a purpose-designed, simple language.</p
 
 		
 		<div id="header">
-			<pre><code><span class="statement">var</span> d = {
-  <span class="string">"data"</span>: [
-    {<span class="string">"uid"</span>: <span class="number">1</span>, <span class="string">"grades"</span>: [<span class="number">5</span>,<span class="number">7</span>,<span class="number">8</span>]},
-    {<span class="string">"uid"</span>: <span class="number">2</span>, <span class="string">"grades"</span>: [<span class="number">3</span>,<span class="number">9</span>,<span class="number">6</span>]}
+<pre class="lang-javascript"><code>var i = {
+  "data": [
+    {"uid": 1, "grades": [5,7,8]},
+    {"uid": 2, "grades": [3,9,6]}
   ],
-  <span class="string">"users"</span>: {
-    <span class="string">"1"</span>: {<span class="string">"name"</span>: <span class="string">"Bruce Willis"</span>},
-    <span class="string">"2"</span>: {<span class="string">"name"</span>: <span class="string">"Samuel L. Jackson"</span>}
+  "users": {
+    1: {"name": "Bruce Willis"},
+    2: {"name": "Samuel L. Jackson"}
   }
 };
 
-<span class="call">jsq</span>(d, <span class="string">'.users as $u | .data[] | {$u[.uid].name: max(.grade)}'</span>);
-<span class="comment">» [{"Bruce Willis":8}, {"Samuel L. Jackson":9}]</span></code></pre>
+jsq(i, '.users as $u | .data[] | {$u[.uid].name: max(.grades)}');
+// » [{"Bruce Willis":8}, {"Samuel L. Jackson":9}]</pre></code>
+			
+			
 		</div>
 		
+		<iframe id="watchButton" src="http://ghbtns.com/github-btn.html?user=tjoekbezoer&repo=jsq&type=watch"
+		  allowtransparency="true" frameborder="0" scrolling="0" width="50" height="20"></iframe>
+		
 		<section>
-			<h2><p>Action</p>
+			<h2><p>What&#39;s next</p>
 </h2>
 			<ul>
-<li>Download <a href="//raw.github.com/tjoekbezoer/jsq/master/jsq.js">jsq v0.1.0</a> — not yet production ready!</li>
+<li>Download <a href="//raw.github.com/tjoekbezoer/jsq/master/jsq.js"><strong>jsq v0.1.0</strong></a> — not yet production ready!</li>
+<li>Take jsq for a spin using my <a href="//tjoekbezoer.github.com/jsq/parser.html"><strong>internal test tool</strong></a></li>
 <li>Run the <a href="//tjoekbezoer.github.com/jsq/test">test suite</a></li>
 <li>Check out the <a href="//www.github.com/tjoekbezoer/jsq">project on GitHub</a></li>
 </ul>
@@ -45,15 +52,16 @@ calculate — it&#39;s up to you. All in a purpose-designed, simple language.</p
 			<hr/>
 		</section>
 		<section>
-			<h2><p>Invoking jsq</p>
+			<h2><p>Using jsq</p>
 </h2>
-			<p>A jsq program is a &quot;filter&quot;: it takes an input, and produces an
-output. There are a lot of builtin filters for extracting a
-particular field of an object, or converting a number to a string,
-or various other standard tasks.</p>
-<p>Filters can be combined in various ways — you can pipe the output of
-one filter into another filter, or collect the output of a filter
-into an array.</p>
+			<p>Jsq allows you to mold your JSON data the way you want to. It does this
+through it&#39;s own query language, called <em>jsq</em>. A jsq query is made up of
+filters. A filter takes an input, and produces an output. Every filter is essentially
+a little program performing a certain task. There&#39;s plenty of built-in functionality
+that allows you to slice, filter, map, transform etc.</p>
+<p>Filters can be combined in various ways to up their power — you can pipe the output of
+one filter into another (like in UNIX), or collect the output of a filter
+into an array for example.</p>
 <p>Some filters produce multiple results, for instance there&#39;s one that
 produces all the elements of its input array. Piping that filter
 into a second runs the second filter for each element of the
@@ -66,6 +74,23 @@ combine two filters, like addition, generally feed the same input to
 both and combine the results. So, you can implement an averaging
 filter as <code>add / length</code> — feeding the input array both to the <code>add</code>
 filter and the <code>length</code> filter and dividing the results.</p>
+<h2>Calling jsq</h2>
+<p>The jsq function is defined as follows:</p>
+<pre><code class="lang-javascript">var output = jsq( input..., query, iterator(value, key, output)?, context  ? )</code></pre>
+<p>An arbitrary number of <code>input</code> objects can be passed (not required) after which a <code>query</code>
+string is expected. Finally an optional <code>iterator</code> function and calling <code>context</code> can be
+defined. Jsq always returns a results array, even when there&#39;s only a single or no results.</p>
+<p>The iterator function is called for every result. It&#39;s passed 3 arguments; the value of the
+result, the position of the result in the result array, and the complete result array. With
+the last argument, the iterator is able to manipulate the result array that&#39;s returned by jsq.</p>
+<h2>Good to know</h2>
+<p>Jsq tries to mimic JavaScript&#39;s behavior as much as possible, especially with regards to
+data types,  comparing values and logical operators. For example, <code>&quot;1&quot; == 1</code> will return
+true while <code>&quot;1&quot; === 1</code> will return false,  <code>2 &amp;&amp; 0</code> will return 0, and <code>false || 2</code> will
+return 2.</p>
+<p>However, in some cases jsq&#39;s response will be different. <code>.foo = 2</code> will for instance not
+return the same as JavaScript&#39;s <code>foo = 2</code>. The latter will evaluate to 2, while jsq
+will return the entire object in which element &#39;<em>foo</em>&#39; now has value 2.</p>
 
 			
 			
@@ -82,9 +107,6 @@ filter and the <code>length</code> filter and dividing the results.</p>
 				<p>The absolute simplest (and least interesting) filter
 is <code>.</code>. This is a filter that takes its input and
 produces it unchanged as output.</p>
-<p>Since jsq by default pretty-prints all output, this trivial
-program can be a useful way of formatting JSON output from,
-say, <code>curl</code>.</p>
 
 			</div>
 			<div>
@@ -92,7 +114,7 @@ say, <code>curl</code>.</p>
 </h3>
 				<p>The simplest <em>useful</em> filter is .foo. When given a
 JSON object (aka dictionary or hash) as input, it produces
-the value at the key &quot;foo&quot;, or null if there&#39;s none present.</p>
+the value at the key &quot;foo&quot;, or nothing if there&#39;s none present.</p>
 
 			</div>
 			<div>
@@ -185,27 +207,32 @@ the quotes can be left off. The value can be any expression
 complicated one), which gets applied to the {} expression&#39;s
 input (remember, all filters have an input and an
 output).</p>
-<pre><code>{foo: .bar}</code></pre>
+<pre><code class="lang-jsq">{foo: .bar}</code></pre>
 <p>will produce the JSON object <code>{&quot;foo&quot;: 42}</code> if given the JSON
 object <code>{&quot;bar&quot;:42, &quot;baz&quot;:43}</code>. You can use this to select
 particular fields of an object: if the input is an object
 with &quot;user&quot;, &quot;title&quot;, &quot;id&quot;, and &quot;content&quot; fields and you
 just want &quot;user&quot; and &quot;title&quot;, you can write</p>
-<pre><code>{user: .user, title: .title}</code></pre>
+<pre><code class="lang-jsq">{user: .user, title: .title}</code></pre>
 <p>Because that&#39;s so common, there&#39;s a shortcut syntax: <code>{user, title}</code>.</p>
 <p>If one of the expressions produces multiple results,
 multiple dictionaries will be produced. If the input&#39;s</p>
-<pre><code>{&quot;user&quot;:&quot;tjoekbezoer&quot;,&quot;titles&quot;:[&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</code></pre>
+<pre><code class="lang-javascript">{
+  &quot;user&quot;:&quot;tjoekbezoer&quot;,
+  &quot;titles&quot;:[&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]
+}</code></pre>
 <p>then the expression</p>
-<pre><code>{user, title: .titles[]}</code></pre>
+<pre><code class="lang-jsq">{user, title: .titles[]}</code></pre>
 <p>will produce two outputs: </p>
-<pre><code>{&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;title&quot;: &quot;JSQ Primer&quot;}
-{&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;title&quot;: &quot;More JSQ&quot;}</code></pre>
+<pre><code class="lang-javascript">[
+  {&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;title&quot;: &quot;JSQ Primer&quot;},
+  {&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;title&quot;: &quot;More JSQ&quot;}
+]</code></pre>
 <p>Putting parentheses around the key means it will be evaluated as an
 expression. With the same input as above,</p>
-<pre><code>{(.user): .titles}</code></pre>
+<pre><code class="lang-jsq">{(.user): .titles}</code></pre>
 <p>produces</p>
-<pre><code>{&quot;tjoekbezoer&quot;: [&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</code></pre>
+<pre><code class="lang-javascript">{&quot;tjoekbezoer&quot;: [&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</code></pre>
 <p>Simple expressions, like a single filter, can also be used without the parentheses.</p>
 
 			</div>
@@ -345,7 +372,7 @@ with the smallest <code>foo</code> field.</p>
 				<p>The <code>recurse</code> function allows you to search through a
 recursive structure, and extract interesting data from all
 levels. Suppose your input represents a filesystem:</p>
-<pre><code>{&quot;name&quot;: &quot;/&quot;, &quot;children&quot;: [
+<pre><code class="lang-javascript">{&quot;name&quot;: &quot;/&quot;, &quot;children&quot;: [
   {&quot;name&quot;: &quot;/bin&quot;, &quot;children&quot;: [
     {&quot;name&quot;: &quot;/bin/ls&quot;, &quot;children&quot;: []},
     {&quot;name&quot;: &quot;/bin/sh&quot;, &quot;children&quot;: []}
@@ -360,7 +387,7 @@ levels. Suppose your input represents a filesystem:</p>
 present. You need to retrieve <code>.name</code>, <code>.children[].name</code>,
 <code>.children[].children[].name</code>, and so on. You can do this
 with:</p>
-<pre><code>recurse(.children[]) | .name</code></pre>
+<pre><code class="lang-jsq">recurse(.children[]) | .name</code></pre>
 
 			</div>
 			
@@ -445,13 +472,6 @@ you&#39;ll need to store it in a variable. To pass a value to another part
 of the program, you&#39;ll need that part of the program to define a
 variable (as a function parameter, object member, or whatever) in
 which to place the data.</p>
-<p>It is also possible to define functions in jsq, although this is
-is a feature whose biggest use is defining jsq&#39;s standard library
-(many jsq functions such as <code>map</code> and <code>find</code> are in fact written
-in jsq).</p>
-<p>Finally, jsq has a <code>fold</code> operation, which is very powerful but a
-bit tricky. Again, it&#39;s mostly used internally, to define some
-useful bits of jsq&#39;s standard library.</p>
 
 			
 			<div>
@@ -474,51 +494,33 @@ defining variables. Still, sometimes they do make things easier, so jsq
 lets you define variables using <code>expression as $variable</code>. All
 variable names start with <code>$</code>. Here&#39;s a slightly uglier version of the
 array-averaging example:</p>
-<pre><code>length as $array_length | add / $array_length</code></pre>
+<pre><code class="lang-jsq">length as $array_length | add / $array_length</code></pre>
 <p>We&#39;ll need a more complicated problem to find a situation where using
 variables actually makes our lives easier.</p>
 <p>Suppose we have an array of blog posts, with &quot;author&quot; and &quot;title&quot;
 fields, and another object which is used to map author usernames to
 real names. Our input looks like:</p>
-<pre><code>{&quot;posts&quot;: [{&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;anon&quot;},
-           {&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;person1&quot;}],
- &quot;realnames&quot;: {&quot;anon&quot;: &quot;Anonymous Coward&quot;,
-               &quot;person1&quot;: &quot;Person McPherson&quot;}}</code></pre>
+<pre><code class="lang-javascript">{
+  &quot;posts&quot;: [
+    {&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;anon&quot;},
+    {&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;person1&quot;}],
+  &quot;realnames&quot;: {
+    &quot;anon&quot;: &quot;Anonymous Coward&quot;,
+    &quot;person1&quot;: &quot;Person McPherson&quot;
+  }
+}</code></pre>
 <p>We want to produce the posts with the author field containing a real
 name, as in:</p>
-<pre><code>{&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;Anonymous Coward&quot;}
-{&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;Person McPherson&quot;}</code></pre>
+<pre><code class="lang-javascript">[
+  {&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;Anonymous Coward&quot;},
+  {&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;Person McPherson&quot;}
+]</code></pre>
 <p>We use a variable, $names, to store the realnames object, so that we
 can refer to it later when looking up author usernames:</p>
-<pre><code>.realnames as $names | .posts[] | {title, author: $names[.author]}</code></pre>
+<pre><code class="lang-jsq">.realnames as $names | .posts[] | {title, author: $names[.author]}</code></pre>
 <p>The expression &quot;foo as $x&quot; runs foo, puts the result in $x,
 and returns the original input. Apart from the side-effect
 of binding the variable, it has the same effect as &quot;.&quot;.</p>
-
-			</div>
-			<div>
-				<h3><p>Fold</p>
-</h3>
-				<p>The <code>fold</code> syntax in jsq allows you to combine all of the
-results of an expression by accumulating them into a single
-answer. As an example, we&#39;ll pass <code>[3,2,1]</code> to this expression:</p>
-<pre><code>fold 0 as $sum (.[] | $sum + .)</code></pre>
-<p>The variable <code>$sum</code> is first given the value <code>0</code>. The body
-of the fold (i.e. <code>.[] | $sum + .</code>) is evaluated. <code>.[]</code>
-produces three results, <code>3</code>, <code>2</code>, and <code>1</code>. For the first
-one, <code>$sum + .</code> gives <code>3</code>.</p>
-<p>Having produced this answer, jsq backtracks to find the next
-result as per usual. However, this time, <code>$sum</code> is set to
-the previous value of the body, so <code>$sum + .</code> gives
-<code>5</code>. After the final backtracking, <code>$sum + .</code> gives
-<code>6</code>. This final value is used as the value of the entire
-<code>fold</code> expression, so the above filter returns <code>6</code>.</p>
-<p>More formally, in order to evaluate <code>fold INIT as $VAR
-(BODY)</code>, jsq first sets <code>$VAR</code> to the value of <code>INIT</code>. It
-then runs through <code>BODY</code>. Each time <code>BODY</code> produces a value,
-<code>$VAR</code> is set to that value and jsq backtracks to find the
-next one. When <code>BODY</code> stops producing values, the final
-value of <code>$VAR</code> is the result of the entire expression.</p>
 
 			</div>
 			
@@ -548,7 +550,7 @@ it doesn&#39;t actually do that, but that&#39;s the general idea).</p>
 and produce as output an object with the &quot;foo&quot; field set to
 1. There is no notion of &quot;modifying&quot; or &quot;changing&quot; something
 in jsq - all jsq values are immutable. For instance,</p>
-<p> .foo = .bar | .foo.baz = 1</p>
+<pre><code class="lang-jsq">.foo = .bar | .foo.baz = 1</code></pre>
 <p>will not have the side-effect of setting .bar.baz to be set
 to 1, as the similar-looking program in Javascript, Python,
 Ruby or other languages would. Unlike these languages (but
@@ -571,9 +573,9 @@ operator &#39;|=&#39;, which takes a filter on the right-hand side and
 works out the new value for the property being assigned to by running
 the old value through this expression. For instance, .foo |= .+1 will
 build an object with the &quot;foo&quot; field set to the input&#39;s &quot;foo&quot; plus 1.</p>
-<p>This example should show the difference between &#39;=&#39; and &#39;|=&#39;:</p>
-<p>Provide input &#39;{&quot;a&quot;: {&quot;b&quot;: 10}, &quot;b&quot;: 20}&#39; to the programs:</p>
-<p>.a = .b<br>.a |= .b</p>
+<p>This example should show the difference between &#39;=&#39; and &#39;|=&#39;. Provide input</p>
+<pre><code class="lang-javascript">{&quot;a&quot;: {&quot;b&quot;: 10}, &quot;b&quot;: 20}</code></pre>
+<p>to the programs <code>.a = .b</code> and <code>.a |= .b</code></p>
 <p>The former will set the &quot;a&quot; field of the input to the &quot;b&quot; field of the
 input, and produce the output {&quot;a&quot;: 20}. The latter will set the &quot;a&quot;
 field of the input to the &quot;a&quot; field&#39;s &quot;b&quot; field, producing {&quot;a&quot;: 10}.</p>
@@ -593,11 +595,11 @@ equivalent to <code>a |= . op b</code>. So, <code>+= 1</code> can be used to inc
 than in most langauges. We&#39;ve already seen simple field accesses on
 the left hand side, and it&#39;s no surprise that array accesses work just
 as well:</p>
-<pre><code>.posts[0].title = &quot;JSQ Manual&quot;</code></pre>
+<pre><code class="lang-jsq">.posts[0].title = &quot;JSQ Manual&quot;</code></pre>
 <p>What may come as a surprise is that the expression on the left may
 produce multiple results, referring to different points in the input
 document:</p>
-<pre><code>.posts[].comments |= . + [&quot;this is great&quot;]</code></pre>
+<pre><code class="lang-jsq">.posts[].comments |= . + [&quot;this is great&quot;]</code></pre>
 <p>That example appends the string &quot;this is great&quot; to the &quot;comments&quot;
 array of each post in the input (where the input is an object with a
 field &quot;posts&quot; which is an array of posts).</p>
@@ -611,11 +613,11 @@ input will be where the assignment is performed.</p>
 to blog posts, using the same &quot;blog&quot; input above. This time, we only
 want to comment on the posts written by &quot;tjoekbezoer&quot;. We can find those
 posts using the &quot;select&quot; function described earlier:</p>
-<pre><code>.posts[] | select(.author == &quot;tjoekbezoer&quot;)</code></pre>
+<pre><code class="lang-jsq">.posts[] | select(.author == &quot;tjoekbezoer&quot;)</code></pre>
 <p>The paths provided by this operation point to each of the posts that
 &quot;tjoekbezoer&quot; wrote, and we can comment on each of them in the same way
 that we did before:</p>
-<pre><code>(.posts[] | select(.author == &quot;tjoekbezoer&quot;) | .comments) |= . + [&quot;terrible.&quot;]</code></pre>
+<pre><code class="lang-jsq">(.posts[] | select(.author == &quot;tjoekbezoer&quot;) | .comments) |= . + [&quot;terrible.&quot;]</code></pre>
 
 			</div>
 			
@@ -626,6 +628,8 @@ that we did before:</p>
 </h2>
 			<ul>
 <li>Syntax and documentation inspired by the excellent <a href="//stedolan.github.com/jq">jq project</a></li>
+<li>Above-the-fold design inspired by <a href="http://lodash.com">Lo-Dash</a></li>
+<li>Syntax highlighting with <a href="http://prismjs.com">Prism</a></li>
 </ul>
 
 			
@@ -638,5 +642,7 @@ that we did before:</p>
 			and the <a href="http://creativecommons.org/licenses/by/3.0/">CC-BY-3.0 license</a> (docs).
 		</div>
 	</div>
+	
+	<script type="text/javascript" src="prism.min.js"></script>
 </body>
 </html>

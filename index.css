@@ -30,22 +30,30 @@ html, body {
 		border-radius: 0;
 		color: #F4F4F4;
 		font-size: 1.1em;
+		overflow: hidden;
 		padding: 0px;
 	}
-	#header span.comment {
+	#header .comment {
 		color: #9B9B9B;
 	}
-	#header span.string {
+	#header .string {
 		color: #6ACB43;
 	}
-	#header span.number {
+	#header .number {
 		color: #DA4D33;
 	}
-	#header span.statement {
+	#header .keyword {
 		color: #FEE35B;
 	}
-	#header span.call {
-		color: #4B9AD0;
+	#header .entity,
+	#header .operator {
+		color: inherit;
+	}
+	
+	#watchButton {
+		float: right;
+		margin-right: -30px;
+		margin-top: -30px;
 	}
 
 #legal {
