@@ -80,16 +80,23 @@
 		
 		return target;
 	}
-	// `which` is 'max', or 'min'
-	function _extreme( which, input ) {
-		if( input instanceof Array ) {
+	// `which` is 'max', or 'min' -- Used in jsq.fn.min/max.
+	// If an argument is supplied, run it for each input element.
+	function _extreme( which, input, argument, undefined ) {
+		if( input instanceof Array && !argument ) {
 			return Math[which].apply(Math, input);
 		} else if( input instanceof Object ) {
-			var max = 0;
-			_each(input, function( val ) {
-				max = Math[which](max, val);
+			var max, obj;
+			_each(input, function( el ) {
+				var val = argument ? _expression([el], [], argument)[0] : el;
+				if( val === undefined ) return;
+				
+				if( max === undefined || Math[which](max, val) == val ) {
+					max = val;
+					if( argument ) obj = el;
+				}
 			});
-			return max;
+			return argument ? obj : max;
 		} else {
 			return input;
 		}
@@ -1144,9 +1151,9 @@
 		},
 		'format': function( input, output, argument ) {
 			if( argument && argument.name == 'string' ) {
-				var values = input.slice(0);
-				values.unshift(argument.value);
-				output.push(_sprintf.apply(this, values));
+				var args = input.slice(0);
+				args.unshift(argument.value);
+				output.push(_sprintf.apply(this, args));
 			}
 		},
 		'keys': function( input, output ) {
@@ -1184,12 +1191,19 @@
 			});
 		},
 		'max': function( input, output, argument ) {
-			input = argument ? _expression(input, [], argument)[0] : input[0];
-			output.push(_extreme('max', input));
+			for( var i=0; i<input.length; i++ )
+				output.push(_extreme('max', input[i], argument));
 		},
 		'min': function( input, output, argument ) {
-			input = argument ? _expression(input, [], argument)[0] : input[0];
-			output.push(_extreme('min', input));
+			for( var i=0; i<input.length; i++ )
+				output.push(_extreme('min', input[i], argument));
+		},
+		'pairs': function( input, output ) {
+			for( var i=0; i<input.length; i++ ) {
+				_each(input[i], function( val, key ) {
+					output.push([key, val]);
+				});
+			}
 		},
 		'recurse': function( input, output, argument ) {
 			if( argument && argument.name == 'filter' ) {
@@ -1214,7 +1228,7 @@
 	
 	// Expose jsq
 	// ----------
-	// Based on Lo-Dashes implementation.
+	// Based on Lo-Dash's implementation.
 	// 
 	// Detect free variable `exports`.
 	var freeExports = typeof exports == 'object' && exports;
