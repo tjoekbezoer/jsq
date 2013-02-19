@@ -194,7 +194,7 @@ sections:
       instead.
 
     entries:
-      - title: Array construction - `[]`
+      - title: Arrays — `[]`
         body: |
         
           As in JSON, `[]` is used to construct arrays, as in
@@ -204,22 +204,28 @@ sections:
           to construct an array out of a known quantity of values (as
           in `[.foo, .bar, .baz]`) or to "collect" all the results of a
           filter into an array (as in `[.items[].name]`)
-        
-          Once you understand the "," operator, you can look at jsq's array
-          syntax in a different light: the expression [1,2,3] is not using a
-          built-in syntax for comma-separated arrays, but is instead applying
-          the `[]` operator (collect results) to the expression 1,2,3 (which
-          produces three different results).
-
-          If you have a filter `X` that produces four results,
-          then the expression `[X]` will produce a single result, an
-          array of four elements.
 
         examples:
           - program: "[.user, .projects[]]"
             input: '{"user":"tjoekbezoer", "projects": ["jsq", "wikiflow"]}'
             output: ['["tjoekbezoer", "jsq", "wikiflow"]']
-      - title: Objects - `{}`
+      
+      - title: Lists — `1,2,3`
+        body: |
+          
+          Once you understand the `,` operator, you can look at jsq's array
+          syntax in a different light: the expression `[1,2,3]` is not using a
+          built-in syntax for comma-separated arrays, but is actually applying
+          the `[]` operator (collect results) to the expression `1,2,3` which
+          produces a list of 3 integers.
+          
+          A list will produce as many results as it has elements.
+
+          If you have a filter `X` that produces four results,
+          then the expression `[X]` will produce a single result, an
+          array of four elements.
+      
+      - title: Objects — `{}`
         body: |
 
           Like JSON, `{}` is for constructing objects (aka
@@ -395,17 +401,13 @@ sections:
       - title: "`keys`"
         body: |
           
-          The builtin function `keys`, when given an object, returns
-          its keys in an array.
-
-          The keys are sorted "alphabetically", by unicode codepoint
-          order. This is not an order that makes particular sense in
-          any particular language, but you can count on it being the
-          same for any two objects with the same set of keys,
-          regardless of locale settings.
-
-          When `keys` is given an array, it returns the valid indices
-          for that array: the integers from 0 to length-1.
+          The builtin function `keys`, when given an object, returns its keys
+          in a list. When given an array, it returns the valid indices  for that
+          array: the integers from 0 to length-1.
+          
+          When 'keying' an object, do not rely on the sort order. The order in which the
+          keys are returned is defined by the browser implementation of object iteration,
+          which is not cross-browser consistent.
 
         examples:
           - program: 'keys'
@@ -414,7 +416,16 @@ sections:
           - program: 'keys'
             input: '[42,3,35]'
             output: ['[0,1,2]']
-
+      
+      - title: "`pairs`"
+        body: |
+          
+          When passed an object, `pairs` will return a list of arrays, where every array
+          is a key-value combination. This also works on arrays.
+          
+          Like with the `keys` function, do not rely on sort order when 'pairing' an object.
+          
+      
       - title: "`select`"
         body: |
           
@@ -422,7 +433,7 @@ sections:
           `foo` returns true for that input, and produces no output
           otherwise.
 
-          It's useful for filtering lists: `[1,2,3] | map(select(. >= 2))`
+          It's useful for filtering lists, objects and arrays: `[1,2,3] | map(select(. >= 2))`
           will give you `[2,3]`.
 
         examples:
@@ -448,12 +459,11 @@ sections:
       - title: "`map(x)`"
         body: |
 
-          For any filter `x`, `map(x)` will run that filter for each
-          element of the input array, and produce the outputs a new
-          array. `map(.+1)` will increment each element of an array of numbers.
+          For any filter `x`, `map(x)` will run that filter for each element of the input
+          object/array, and produce a list of results equal to the amount of elements.
+          `map(.+1)` will increment each element of an array of numbers.
 
-          `map(x)` is equivalent to `[.[] | x]`. In fact, this is how
-          it's defined.
+          `map(x)` is equivalent to `.[] | x`.
 
         examples:
           - program: 'map(.+1)'
@@ -534,10 +544,9 @@ sections:
       - title: "`min`, `max`"
         body: |
           
-          Find the minimum or maximum element of the input array. The
-          `_by` versions allow you to specify a particular field or
-          property to examine, e.g. `min_by(.foo)` finds the object
-          with the smallest `foo` field.
+          Find the minimum or maximum element of the input array. Providing a filter as argument
+          allows you to specify a particular field or property to examine, e.g. `min(.foo)`
+          finds the object with the smallest `foo` field.
 
         examples:
           - program: 'min'
