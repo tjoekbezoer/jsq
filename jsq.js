@@ -32,17 +32,13 @@
 	}
 	function _each( obj, iterator ) {
 		if( obj == null ) return;
-		if( Array.prototype.forEach && obj.forEach === Array.prototype.forEach ) {
-			obj.forEach(iterator);
-		} else if( obj.length === +obj.length ) {
+		if( obj instanceof Array ) {
 			for( var i = 0, l = obj.length; i < l; i++ ) {
 				if( iterator(obj[i], i, obj) === false ) return;
 			}
-		} else {
+		} else if( obj instanceof Object ) {
 			for( var key in obj ) {
-				if( Object.prototype.hasOwnProperty.call(obj, key) ) {
-					if( iterator(obj[key], key, obj) === false ) return;
-				}
+				if( iterator(obj[key], key, obj) === false ) return;
 			}
 		}
 	}
