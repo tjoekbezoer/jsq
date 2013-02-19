@@ -69,12 +69,15 @@
 		eq('(2+4)/3+1', [3]);
 		eq('((2+4)*2+3)*2', [30]);
 		
+		// TODO: Advanced arithmetic with mixed values (array+array, array-array, etc).
+		
 		// Logical
 		eq('1&&2, 2&&1, 1 && 2, 1	&&	2', [2,1,2,2]);
 		eq('1&&0, 0&&1', [0,0]);
 		eq('1||2, 2||1, 1||0', [1,2,1]);
 		eq('1==1, 2!=1, 2>1, 2>=1, 1>=1, 1<2, 1<=2, 1<=1', [true,true,true,true,true,true,true,true]);
 		eq('2==1, 1!=1, 1>2, 1>=2, 2<1, 2<=1', [false,false,false,false,false,false]);
+		eq('"1"==1, "1"===1', [true,false]);
 		// Precedence
 		eq('1||2&&3', [1]);
 		eq('(1||2)&&3', [3]);

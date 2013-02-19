@@ -1001,7 +1001,7 @@
 	}
 	function _function( input, output, branch ) {
 		if( branch.value && typeof jsq['fn'][branch.value] == 'function' ) {
-			jsq['fn'][branch.value](input, output, branch.children[0] && branch.children[0].children[0]);
+			jsq['fn'][branch.value](input[0], output, branch.children[0] && branch.children[0].children[0]);
 		}
 	}
 	// Creating an object is a complex one. When defining an object in JSQ, multiple actual objects
@@ -1081,10 +1081,12 @@
 	// callback = function(value, index, outputArray)
 	var jsq = function( /*data..., query, callback, ctx*/ ) {
 		// Determine arguments
-		var input = [],
-				args = Array.prototype.slice.call(arguments, 0),
-				arg, node, output, i, parser,
-				query, callback, ctx;
+		var input = []
+			, args = Array.prototype.slice.call(arguments, 0)
+			, output = []
+			, arg, node, i, parser
+			, query, callback, ctx;
+		
 		// All arguments preceding the query are input values
 		while( (arg = args.shift()) && typeof arg != 'string' )
 			input.push(arg);
@@ -1097,14 +1099,21 @@
 		parser = new Parser(query);
 		parser.parse();
 		if( node = parser.tree.children[0] ) {
-			output = _expression(input, [], node);
+			if( input.length ) {
+				_each(input, function( input ) {
+					_expression([input], output, node);
+				});
+			} else {
+				_expression(input, output, node);
+			}
+			
 			// Reset _vars for this query
 			_vars = {};
 			if( typeof callback == 'function' ) {
-				for( i=0; i<output.length; i++ ) {
-					if( callback.call(ctx, output[i], i, output) === false )
-						break;
-				}
+				// If a callback is provided, iterate through results, breaking when return===false.
+				_each(output, function() {
+					return callback.apply(ctx, arguments);
+				});
 			}
 			return output;
 		} else {
@@ -1117,24 +1126,21 @@
 	// Modules
 	jsq['fn'] = {
 		'add': function( input, output ) {
-			var ret = 0, i;
-			for( i=0; i<input.length; i++ ) {
-				ret += input[i] instanceof Array ?
-					arguments.callee(input[i]) :
-					input[i] == +input[i] ? input[i] : 0;
-			}
+			var ret, undefined;
+			_each(input, function( val ) {
+				ret = ret==undefined ? val : ret+val;	
+			});
 			
-			return output && output.push(ret) || ret;
+			return output.push(ret);
 		},
 		'if': function( input, output, argument ) {
 			if( argument && argument.name == 'list' && argument.children.length >= 2 ) {
 				var children = argument.children
+					, input = [input] // <-- ATTENTION
 					, exp = _expression(input, [], children[0])
 					, i;
 				for( i=0; i<exp.length; i++ ) {
-					if( exp[i] ) {
-						return _expression(input, output, children[1]);
-					}
+					if( exp[i] ) return _expression(input, output, children[1]);
 				}
 				if( children[2] )
 					_expression(input, output, children[2]);
@@ -1146,78 +1152,73 @@
 			return;
 		},
 		'format': function( input, output, argument ) {
-			if( argument && argument.name == 'string' ) {
-				var args = input.slice(0);
-				args.unshift(argument.value);
-				output.push(_sprintf.apply(this, args));
-			}
+			if( !(input instanceof Array) || !argument || argument.name != 'string' )
+				return;
+			
+			input = input.slice(0);
+			input.unshift(argument.value);
+			output.push(_sprintf.apply(this, input));
 		},
 		'keys': function( input, output ) {
-			_each(input, function( input ) {
-				if( input instanceof Object ) {
-					if( input instanceof Array ) {
-						for( var i=0; i<input.length; i++ )
-							output.push(i);
-					} else {
-						for( var key in input )
-							output.push(key);
-					}
-				}
+			var ret = [];
+			_each(input, function( val, key ) {
+				ret.push(key);
 			});
+			if( ret.length )
+				output.push(ret);
 		},
 		'length': function( input, output ) {
-			_each(input, function( input ) {
-				if( input instanceof Array || typeof input == 'string' ) {
-					return output.push(input.length);
-				} else if( input instanceof Object ) {
-					var count = 0;
-					for( var key in input )
-						count++;
-					return output.push(count);
-				}
-			});
+			if( input instanceof Array || typeof input == 'string' ) {
+				return output.push(input.length);
+			} else if( input instanceof Object ) {
+				var count = 0;
+				for( var key in input )
+					count++;
+				return output.push(count);
+			}
 		},
 		'map': function( input, output, argument ) {
-			_each(input, function( input ) {
-				if( input instanceof Object ) {
-					_each(input, function( input ) {
-						output.push.apply(output, _expression([input], [], argument));
-					});
-				}
-			});
-		},
-		'max': function( input, output, argument ) {
-			for( var i=0; i<input.length; i++ )
-				output.push(_extreme('max', input[i], argument));
-		},
-		'min': function( input, output, argument ) {
-			for( var i=0; i<input.length; i++ )
-				output.push(_extreme('min', input[i], argument));
-		},
-		'pairs': function( input, output ) {
-			for( var i=0; i<input.length; i++ ) {
-				_each(input[i], function( val, key ) {
-					output.push([key, val]);
+			if( input instanceof Object ) {
+				_each(input, function( input ) {
+					output.push.apply(output, _expression([input], [], argument));
 				});
 			}
 		},
-		'recurse': function( input, output, argument ) {
+		'max': function( input, output, argument ) {
+			output.push(_extreme('max', input, argument));
+		},
+		'min': function( input, output, argument ) {
+			output.push(_extreme('min', input, argument));
+		},
+		'pairs': function( input, output ) {
+			var ret = [];
+			_each(input, function( val, key ) {
+				ret.push([key, val]);
+			});
+			if( ret.length )
+				output.push(ret);
+		},
+		'recurse': function( input, output, argument, level ) {
 			if( argument && argument.name == 'filter' ) {
+				if( !level ) {
+					input = [input];
+					level = 0;
+				}
+				level++;
+				
 				for( var i=0; i<input.length; i++ ) {
 					output.push(input[i]);
 					var exp = _expression([input[i]], [], argument);
-					if( exp.length ) {
-						this.recurse(exp, output, argument);
-					}
+					if( exp.length )
+						this.recurse(exp, output, argument, level);
 				}
 			}
 		},
 		'select': function( input, output, argument ) {
-			for( var i=0; i<input.length; i++ ) {
-				var result = _expression([input[i]], [], argument);
-				if( result.length == 1 && result[0] )
-					output.push(input[i]);
-			}
+			_each( _expression([input], [], argument), function( result ) {
+				if( result )
+					return output.push(result) && false;
+			});
 		}
 	};
 	
