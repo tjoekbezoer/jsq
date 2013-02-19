@@ -140,18 +140,18 @@ array.</p>
 			<div>
 				<h3><p><code>,</code></p>
 </h3>
-				<p>If two filters are separated by a comma, then the
-input will be fed into both and there will be multiple
-outputs: first, all of the outputs produced by the left
-expression, and then all of the outputs produced by the
-right. For instance, filter <code>.foo, .bar</code>, produces
-both the &quot;foo&quot; fields and &quot;bar&quot; fields as separate outputs.</p>
+				<p>If two filters are separated by a comma, then the input will be fed into both and
+there will be multiple outputs: first, all of the outputs produced by the left
+expression, and then all of the outputs produced by the right. For instance, filter
+<code>.foo, .bar</code>, produces both the &quot;foo&quot; fields and &quot;bar&quot; fields as separate outputs.</p>
+<p>By combining expression like this, you are creating what is called a <em>list</em>. You can
+read more about this in the next chapter <strong>Types and Values</strong>.</p>
 
 			</div>
 			<div>
 				<h3><p><code>|</code></p>
 </h3>
-				<p>The | operator combines two filters by feeding the output(s) of
+				<p>The | operator combines two filters by feeding the result(s) of
 the one on the left into the input of the one on the right. It&#39;s
 pretty much the same as the Unix shell&#39;s pipe, if you&#39;re used to
 that. </p>
@@ -177,7 +177,7 @@ instead.</p>
 
 			
 			<div>
-				<h3><p>Array construction - <code>[]</code></p>
+				<h3><p>Arrays — <code>[]</code></p>
 </h3>
 				<p>As in JSON, <code>[]</code> is used to construct arrays, as in
 <code>[1,2,3]</code>. The elements of the arrays can be any jsq
@@ -186,18 +186,24 @@ expressions are collected into one big array. You can use it
 to construct an array out of a known quantity of values (as
 in <code>[.foo, .bar, .baz]</code>) or to &quot;collect&quot; all the results of a
 filter into an array (as in <code>[.items[].name]</code>)</p>
-<p>Once you understand the &quot;,&quot; operator, you can look at jsq&#39;s array
-syntax in a different light: the expression [1,2,3] is not using a
-built-in syntax for comma-separated arrays, but is instead applying
-the <code>[]</code> operator (collect results) to the expression 1,2,3 (which
-produces three different results).</p>
 <p>If you have a filter <code>X</code> that produces four results,
 then the expression <code>[X]</code> will produce a single result, an
 array of four elements.</p>
 
 			</div>
 			<div>
-				<h3><p>Objects - <code>{}</code></p>
+				<h3><p>Lists — <code>1,2,3</code></p>
+</h3>
+				<p>Once you understand the <code>,</code> operator, you can look at jsq&#39;s array
+syntax in a different light: the expression <code>[1,2,3]</code> is not using a
+built-in syntax for comma-separated arrays, but is actually applying
+the <code>[]</code> operator (collect results) to the expression <code>1,2,3</code> which
+produces a list of 3 integers.</p>
+<p>A list will produce as many results as it has elements.</p>
+
+			</div>
+			<div>
+				<h3><p>Objects — <code>{}</code></p>
 </h3>
 				<p>Like JSON, <code>{}</code> is for constructing objects (aka
 dictionaries or hashes), as in: <code>{&quot;a&quot;: 42, &quot;b&quot;: 17}</code>.</p>
@@ -308,15 +314,20 @@ JSON-encoded length in bytes if it&#39;s pure ASCII).</p>
 			<div>
 				<h3><p><code>keys</code></p>
 </h3>
-				<p>The builtin function <code>keys</code>, when given an object, returns
-its keys in an array.</p>
-<p>The keys are sorted &quot;alphabetically&quot;, by unicode codepoint
-order. This is not an order that makes particular sense in
-any particular language, but you can count on it being the
-same for any two objects with the same set of keys,
-regardless of locale settings.</p>
-<p>When <code>keys</code> is given an array, it returns the valid indices
-for that array: the integers from 0 to length-1.</p>
+				<p>The builtin function <code>keys</code>, when given an object, returns its keys
+in a list. When given an array, it returns the valid indices  for that
+array: the integers from 0 to length-1.</p>
+<p>When &#39;keying&#39; an object, do not rely on the sort order. The order in which the
+keys are returned is defined by the browser implementation of object iteration,
+which is not cross-browser consistent.</p>
+
+			</div>
+			<div>
+				<h3><p><code>pairs</code></p>
+</h3>
+				<p>When passed an object, <code>pairs</code> will return a list of arrays, where every array
+is a key-value combination. This also works on arrays.</p>
+<p>Like with the <code>keys</code> function, do not rely on sort order when &#39;pairing&#39; an object.</p>
 
 			</div>
 			<div>
@@ -325,7 +336,7 @@ for that array: the integers from 0 to length-1.</p>
 				<p>The function <code>select(foo)</code> produces its input unchanged if
 <code>foo</code> returns true for that input, and produces no output
 otherwise.</p>
-<p>It&#39;s useful for filtering lists: <code>[1,2,3] | map(select(. &gt;= 2))</code>
+<p>It&#39;s useful for filtering lists, objects and arrays: <code>[1,2,3] | map(select(. &gt;= 2))</code>
 will give you <code>[2,3]</code>.</p>
 
 			</div>
@@ -339,11 +350,10 @@ will give you <code>[2,3]</code>.</p>
 			<div>
 				<h3><p><code>map(x)</code></p>
 </h3>
-				<p>For any filter <code>x</code>, <code>map(x)</code> will run that filter for each
-element of the input array, and produce the outputs a new
-array. <code>map(.+1)</code> will increment each element of an array of numbers.</p>
-<p><code>map(x)</code> is equivalent to <code>[.[] | x]</code>. In fact, this is how
-it&#39;s defined.</p>
+				<p>For any filter <code>x</code>, <code>map(x)</code> will run that filter for each element of the input
+object/array, and produce a list of results equal to the amount of elements.
+<code>map(.+1)</code> will increment each element of an array of numbers.</p>
+<p><code>map(x)</code> is equivalent to <code>.[] | x</code>.</p>
 
 			</div>
 			<div>
@@ -360,10 +370,9 @@ as those for the <code>+</code> operator (described above).</p>
 			<div>
 				<h3><p><code>min</code>, <code>max</code></p>
 </h3>
-				<p>Find the minimum or maximum element of the input array. The
-<code>_by</code> versions allow you to specify a particular field or
-property to examine, e.g. <code>min_by(.foo)</code> finds the object
-with the smallest <code>foo</code> field.</p>
+				<p>Find the minimum or maximum element of the input array. Providing a filter as argument
+allows you to specify a particular field or property to examine, e.g. <code>min(.foo)</code>
+finds the object with the smallest <code>foo</code> field.</p>
 
 			</div>
 			<div>
@@ -388,6 +397,13 @@ present. You need to retrieve <code>.name</code>, <code>.children[].name</code>,
 <code>.children[].children[].name</code>, and so on. You can do this
 with:</p>
 <pre><code class="lang-jsq">recurse(.children[]) | .name</code></pre>
+
+			</div>
+			<div>
+				<h3><p><code>format(string)</code></p>
+</h3>
+				<p>Much like a simplified sprintf, <code>format</code> accepts an array of values to be integrated
+into a custom string.</p>
 
 			</div>
 			
