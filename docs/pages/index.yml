@@ -109,8 +109,7 @@ sections:
           You can also look up fields of an object using syntax like
           `.["foo"]` (.foo above is a shorthand version of this). This
           one works for arrays as well, if the key is an
-          integer. Arrays are zero-based (like javascript), so .[2]
-          returns the third element of the array.
+          integer.
 
         examples:
           - program: '.[0]'
@@ -124,10 +123,10 @@ sections:
       - title: "`.[]`"
         body: |
           
-          If you use the `.[foo]` syntax, but omit the index
+          If you use the `.["foo"]` syntax, but omit the index
           entirely, it will return *all* of the elements of an
           array. Running `.[]` with the input `[1,2,3]` will produce the
-          numbers as three seperate results, rather than as a single
+          numbers as a list of three results, rather than as a single
           array.
 
         examples:
@@ -144,12 +143,13 @@ sections:
       - title: "`,`"
         body: |
           
-          If two filters are separated by a comma, then the
-          input will be fed into both and there will be multiple
-          outputs: first, all of the outputs produced by the left
-          expression, and then all of the outputs produced by the
-          right. For instance, filter `.foo, .bar`, produces
-          both the "foo" fields and "bar" fields as separate outputs.
+          If two filters are separated by a comma, then the input will be fed into both and
+          there will be multiple outputs: first, all of the outputs produced by the left
+          expression, and then all of the outputs produced by the right. For instance, filter
+          `.foo, .bar`, produces both the "foo" fields and "bar" fields as separate outputs.
+          
+          By combining expression like this, you are creating what is called a *list*. You can
+          read more about this in the next chapter **Types and Values**.
 
         examples:
           - program: '.foo, .bar'
@@ -166,7 +166,7 @@ sections:
           
       - title: "`|`"
         body: |
-          The | operator combines two filters by feeding the output(s) of
+          The | operator combines two filters by feeding the result(s) of
           the one on the left into the input of the one on the right. It's
           pretty much the same as the Unix shell's pipe, if you're used to
           that. 
@@ -184,26 +184,27 @@ sections:
   - title: Types and Values
     body: |
       
-      jsq supports the same set of datatypes as JSON - numbers,
-      strings, booleans, arrays, objects, and "null".
+      jsq supports the same set of datatypes as JSON - numbers, strings, booleans, arrays,
+      objects, and "null".
 
-      Booleans, null, strings and numbers are written the same way as
-      in javascript. Just like everything else in jsq, these simple
-      values take an input and produce an output - `42` is a valid jsq
-      expression that takes an input, ignores it, and returns 42
-      instead.
+      Booleans, null, strings and numbers are written the same way as in javascript. Just like
+      everything else in jsq, these simple values take an input and produce an output — `42` is
+      a valid jsq expression that takes an input, ignores it, and returns 42 instead.
+      
+      Like in JSON, strings are delimited using "double quotes". 'Single quotes' are now allowed.
 
     entries:
       - title: Arrays — `[]`
         body: |
         
-          As in JSON, `[]` is used to construct arrays, as in
-          `[1,2,3]`. The elements of the arrays can be any jsq
-          expression. All of the results produced by all of the
-          expressions are collected into one big array. You can use it
-          to construct an array out of a known quantity of values (as
-          in `[.foo, .bar, .baz]`) or to "collect" all the results of a
-          filter into an array (as in `[.items[].name]`)
+          Similar to JavaScript, `[]` is used to construct arrays, as in `[1,2,3]`. The elements
+          of the arrays can be any jsq expression. All of the results produced by all of the
+          expressions are collected into one big array. You can use it to construct an array out
+          of a known quantity of values (as in `[.foo, .bar, .baz]`) or to "collect" all the results
+          of a filter into an array (as in `[.items[].name]`)
+          
+          If you have a filter `X` that produces four results, then the expression `[X]` will
+          produce a single result, an array of four elements.
 
         examples:
           - program: "[.user, .projects[]]"
@@ -220,21 +221,17 @@ sections:
           produces a list of 3 integers.
           
           A list will produce as many results as it has elements.
-
-          If you have a filter `X` that produces four results,
-          then the expression `[X]` will produce a single result, an
-          array of four elements.
       
       - title: Objects — `{}`
         body: |
 
-          Like JSON, `{}` is for constructing objects (aka
-          dictionaries or hashes), as in: `{"a": 42, "b": 17}`.
+          Continuing JavaScript's familiarity, objects are constructed using `{}` — e.g.:
+          `{"a": 42, "b": 17}`.
           
           If the keys are "sensible" (all alphabetic characters), then
           the quotes can be left off. The value can be any expression
           (although you may need to wrap it in parentheses if it's a
-          complicated one), which gets applied to the {} expression's
+          complicated one — like when using a list), which gets applied to the {} expression's
           input (remember, all filters have an input and an
           output).
           
@@ -292,7 +289,8 @@ sections:
           {"tjoekbezoer": ["JSQ Primer", "More JSQ"]}
           ```
           
-          Simple expressions, like a single filter, can also be used without the parentheses.
+          Simple expressions, like a single filter, can also be used without the parentheses. A
+          filter defining a key can return only one result, or jsq will throw an error.
           
         examples:
           - program: '{user, title: .titles[]}'
@@ -304,14 +302,27 @@ sections:
             input: '{"user":"tjoekbezoer","titles":["JSQ Primer", "More JSQ"]}'
             output: ['{"tjoekbezoer": ["JSQ Primer", "More JSQ"]}']
 
-  - title: Builtin operators and functions
+  - title: Builtin operators
     body: |
 
-      Some jsq operator (for instance, `+`) do different things
-      depending on the type of their arguments (arrays, numbers,
-      etc.). However, jsq never does implicit type conversions. If you
-      try to add a string to an object you'll get an error message and
-      no result.
+      Some jsq operators (for instance, `+`) do different things depending on the type of their
+      arguments (arrays, numbers, etc.). Jsq will mimic JavaScript as much as possible, so `"1"+1`
+      will produce `"11"`, and `"1"-1` will produce `0`.
+      
+      If one or both expressions produce multiple results, the operation will be performed for
+      every possible combination of results. So
+      
+      ```
+      (1,2) + 3
+      ```
+      
+      Will produce `[4,5]`, and
+      
+      ```
+      (1,2) * (3,4)
+      ```
+      
+      Will produce `[3,4,6,8]`.
       
     entries:
       - title: Addition - `+`
@@ -332,8 +343,7 @@ sections:
               combined object. If both objects contain a value for the
               same key, the object on the right of the `+` wins.
           
-          `null` can be added to any value, and returns the other
-          value unchanged.
+        # `null` can be added to any value, and returns the other value unchanged.
 
         examples:
           - program: '.a + 1'
@@ -354,10 +364,12 @@ sections:
 
       - title: Subtraction - `-`
         body: |
-
-          As well as normal arithmetic subtraction on numbers, the `-`
-          operator can be used on arrays to remove all occurences of
-          the second array's elements from the first array.
+          
+          - **Numbers** are subtracted by normal arithmetic.
+          - **Arrays** are being subtracted by removing all occurences of the second array's
+            elements from the first array.
+          - **Objects** are subtracted similarly — all keys from the second object will be removed
+            from the first object.
 
         examples:
           - program: '4 - .a'
@@ -377,6 +389,21 @@ sections:
             input: 5
             output: [6]
       
+      - title: Binary — `and`, `or` and `xor`
+        body: |
+          
+          These operators are similar to JavaScript's `&`, `|` and `^`. So for example `1 or 2`
+          produces `3`, and `1 xor 5` produces `4`.
+    
+  - title: Builtin functions
+    body: |
+      
+      Jsq comes with a set of builtin functions that allow you to perform extra operations on your
+      data, like filtering or transforming. Every function listed here is written in JavaScript,
+      and defined in the public `jsq.fn` object, so it's possible to alter them, or add new ones
+      of your own.
+    
+    entries:
       - title: "`length`"
         body: |
 
@@ -491,6 +518,33 @@ sections:
           - program: add
             input: '[]'
             output: ["null"]
+        
+      - title: "`tonumber`"
+        body: |
+
+          The `tonumber` function will parse its input as a number, or return `0` when it's not
+          able to produce a number.
+
+        examples:
+          - program: '.[] | tonumber'
+            input: '[1, "1"]'
+            output: [1, 1]
+
+      - title: "`tostring`"
+        body: |
+
+          The `tostring` function prints its input as a string. Strings are left unchanged, and all
+          other values are JSON-encoded. Jsq uses `JSON.stringify` for this, so make sure it is
+          available (it is in modern browsers, but for older browser you might need to include 
+          [json.js][json])
+          
+          [json]: https://github.com/douglascrockford/JSON-js
+          
+        examples:
+          - program: '.[] | tostring'
+            input: '[1, "1", [1]]'
+            output: ['"1"', '"1"', '"[1]"']
+        
             
       # - title: "`sort`, `sort_by`"
       #   body: |
@@ -606,7 +660,13 @@ sections:
               - '{"foo":[]}'
               - '{"foo":[{"foo":[]}]}'
               - '{"foo":[]}'
-
+      
+      - title: '`format(string)`'
+        body: |
+          
+          Much like a simplified sprintf, `format` accepts an array of values to be integrated
+          into a custom string.
+          
   - title: Conditionals and Comparisons
     entries:
       - title: "`==`, `===`, `!=`"
