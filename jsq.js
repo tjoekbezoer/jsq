@@ -114,7 +114,7 @@
 			// (3) assignment operator
 			'(as(?= )|=|\\|=|\\+=|-=|\\*=|/=)|',
 			// (4) arithmetic operator
-			'([-+*/\\\\^]|&)|',
+			'([-+*/]|and|or|xor)|',
 			// (5) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
 			// (6) boolean
@@ -423,8 +423,8 @@
 						(prev.value == '+' || prev.value == '-')
 					) ||
 					// Bitwise precedence
-					token.data == '&' && (prev.value == '^' || prev.value == '\\') ||
-					token.data == '^' && prev.value == '\\'
+					token.data == 'and' && (prev.value == 'xor' || prev.value == 'or') ||
+					token.data == 'xor' && prev.value == 'or'
 				)
 			)
 		) {
@@ -800,9 +800,9 @@
 					case '-':
 					case '*':
 					case '/':
-					case '&':
-					case '\\':
-					case '^':
+					case 'and':
+					case 'or':
+					case 'xor':
 					case '&&':
 					case '||':
 					case '==':
@@ -846,9 +846,9 @@
 		'<=':  function( l, r ) { return l <= r },
 		'>':   function( l, r ) { return l > r },
 		'<':   function( l, r ) { return l < r },
-		'&':   function( l, r ) { return l & r },
-		'\\':  function( l, r ) { return l | r },
-		'^':   function( l, r ) { return l ^ r }
+		'and':   function( l, r ) { return l & r },
+		'or':  function( l, r ) { return l | r },
+		'xor':   function( l, r ) { return l ^ r }
 	};
 	function _expression( input, output, branch ) {
 		var col, i, result;
