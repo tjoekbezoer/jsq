@@ -34,8 +34,8 @@ jsq(i, '.users as $u | .data[] | {$u[.uid].name: max(.grades)}');
 			
 		</div>
 		
-		<iframe id="watchButton" src="http://ghbtns.com/github-btn.html?user=tjoekbezoer&repo=jsq&type=watch"
-		  allowtransparency="true" frameborder="0" scrolling="0" width="50" height="20"></iframe>
+		<!-- <iframe id="watchButton" src="http://ghbtns.com/github-btn.html?user=tjoekbezoer&repo=jsq&type=watch"
+		  allowtransparency="true" frameborder="0" scrolling="0" width="50" height="20"></iframe> -->
 		
 		<section>
 			<h2><p>What&#39;s next</p>
@@ -123,17 +123,16 @@ the value at the key &quot;foo&quot;, or nothing if there&#39;s none present.</p
 				<p>You can also look up fields of an object using syntax like
 <code>.[&quot;foo&quot;]</code> (.foo above is a shorthand version of this). This
 one works for arrays as well, if the key is an
-integer. Arrays are zero-based (like javascript), so .[2]
-returns the third element of the array.</p>
+integer.</p>
 
 			</div>
 			<div>
 				<h3><p><code>.[]</code></p>
 </h3>
-				<p>If you use the <code>.[foo]</code> syntax, but omit the index
+				<p>If you use the <code>.[&quot;foo&quot;]</code> syntax, but omit the index
 entirely, it will return <em>all</em> of the elements of an
 array. Running <code>.[]</code> with the input <code>[1,2,3]</code> will produce the
-numbers as three seperate results, rather than as a single
+numbers as a list of three results, rather than as a single
 array.</p>
 
 			</div>
@@ -167,28 +166,24 @@ element of the input array.</p>
 		<section>
 			<h2><p>Types and Values</p>
 </h2>
-			<p>jsq supports the same set of datatypes as JSON - numbers,
-strings, booleans, arrays, objects, and &quot;null&quot;.</p>
-<p>Booleans, null, strings and numbers are written the same way as
-in javascript. Just like everything else in jsq, these simple
-values take an input and produce an output - <code>42</code> is a valid jsq
-expression that takes an input, ignores it, and returns 42
-instead.</p>
+			<p>jsq supports the same set of datatypes as JSON - numbers, strings, booleans, arrays,
+objects, and &quot;null&quot;.</p>
+<p>Booleans, null, strings and numbers are written the same way as in javascript. Just like
+everything else in jsq, these simple values take an input and produce an output — <code>42</code> is
+a valid jsq expression that takes an input, ignores it, and returns 42 instead.</p>
+<p>Like in JSON, strings are delimited using &quot;double quotes&quot;. &#39;Single quotes&#39; are now allowed.</p>
 
 			
 			<div>
 				<h3><p>Arrays — <code>[]</code></p>
 </h3>
-				<p>As in JSON, <code>[]</code> is used to construct arrays, as in
-<code>[1,2,3]</code>. The elements of the arrays can be any jsq
-expression. All of the results produced by all of the
-expressions are collected into one big array. You can use it
-to construct an array out of a known quantity of values (as
-in <code>[.foo, .bar, .baz]</code>) or to &quot;collect&quot; all the results of a
-filter into an array (as in <code>[.items[].name]</code>)</p>
-<p>If you have a filter <code>X</code> that produces four results,
-then the expression <code>[X]</code> will produce a single result, an
-array of four elements.</p>
+				<p>Similar to JavaScript, <code>[]</code> is used to construct arrays, as in <code>[1,2,3]</code>. The elements
+of the arrays can be any jsq expression. All of the results produced by all of the
+expressions are collected into one big array. You can use it to construct an array out
+of a known quantity of values (as in <code>[.foo, .bar, .baz]</code>) or to &quot;collect&quot; all the results
+of a filter into an array (as in <code>[.items[].name]</code>)</p>
+<p>If you have a filter <code>X</code> that produces four results, then the expression <code>[X]</code> will
+produce a single result, an array of four elements.</p>
 
 			</div>
 			<div>
@@ -205,12 +200,12 @@ produces a list of 3 integers.</p>
 			<div>
 				<h3><p>Objects — <code>{}</code></p>
 </h3>
-				<p>Like JSON, <code>{}</code> is for constructing objects (aka
-dictionaries or hashes), as in: <code>{&quot;a&quot;: 42, &quot;b&quot;: 17}</code>.</p>
+				<p>Continuing JavaScript&#39;s familiarity, objects are constructed using <code>{}</code> — e.g.:
+<code>{&quot;a&quot;: 42, &quot;b&quot;: 17}</code>.</p>
 <p>If the keys are &quot;sensible&quot; (all alphabetic characters), then
 the quotes can be left off. The value can be any expression
 (although you may need to wrap it in parentheses if it&#39;s a
-complicated one), which gets applied to the {} expression&#39;s
+complicated one — like when using a list), which gets applied to the {} expression&#39;s
 input (remember, all filters have an input and an
 output).</p>
 <pre><code class="lang-jsq">{foo: .bar}</code></pre>
@@ -239,20 +234,25 @@ expression. With the same input as above,</p>
 <pre><code class="lang-jsq">{(.user): .titles}</code></pre>
 <p>produces</p>
 <pre><code class="lang-javascript">{&quot;tjoekbezoer&quot;: [&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</code></pre>
-<p>Simple expressions, like a single filter, can also be used without the parentheses.</p>
+<p>Simple expressions, like a single filter, can also be used without the parentheses. A
+filter defining a key can return only one result, or jsq will throw an error.</p>
 
 			</div>
 			
 			<hr/>
 		</section>
 		<section>
-			<h2><p>Builtin operators and functions</p>
+			<h2><p>Builtin operators</p>
 </h2>
-			<p>Some jsq operator (for instance, <code>+</code>) do different things
-depending on the type of their arguments (arrays, numbers,
-etc.). However, jsq never does implicit type conversions. If you
-try to add a string to an object you&#39;ll get an error message and
-no result.</p>
+			<p>Some jsq operators (for instance, <code>+</code>) do different things depending on the type of their
+arguments (arrays, numbers, etc.). Jsq will mimic JavaScript as much as possible, so <code>&quot;1&quot;+1</code>
+will produce <code>&quot;11&quot;</code>, and <code>&quot;1&quot;-1</code> will produce <code>0</code>.</p>
+<p>If one or both expressions produce multiple results, the operation will be performed for
+every possible combination of results. So</p>
+<pre><code>(1,2) + 3</code></pre>
+<p>Will produce <code>[4,5]</code>, and</p>
+<pre><code>(1,2) * (3,4)</code></pre>
+<p>Will produce <code>[3,4,6,8]</code>.</p>
 
 			
 			<div>
@@ -274,16 +274,18 @@ to the same input, and adds the results together. What
   same key, the object on the right of the <code>+</code> wins.</p>
 </li>
 </ul>
-<p><code>null</code> can be added to any value, and returns the other
-value unchanged.</p>
 
 			</div>
 			<div>
 				<h3><p>Subtraction - <code>-</code></p>
 </h3>
-				<p>As well as normal arithmetic subtraction on numbers, the <code>-</code>
-operator can be used on arrays to remove all occurences of
-the second array&#39;s elements from the first array.</p>
+				<ul>
+<li><strong>Numbers</strong> are subtracted by normal arithmetic.</li>
+<li><strong>Arrays</strong> are being subtracted by removing all occurences of the second array&#39;s
+elements from the first array.</li>
+<li><strong>Objects</strong> are subtracted similarly — all keys from the second object will be removed
+from the first object.</li>
+</ul>
 
 			</div>
 			<div>
@@ -292,6 +294,25 @@ the second array&#39;s elements from the first array.</p>
 				<p>These operators only work on numbers, and do the expected.</p>
 
 			</div>
+			<div>
+				<h3><p>Binary — <code>and</code>, <code>or</code> and <code>xor</code></p>
+</h3>
+				<p>These operators are similar to JavaScript&#39;s <code>&amp;</code>, <code>|</code> and <code>^</code>. So for example <code>1 or 2</code>
+produces <code>3</code>, and <code>1 xor 5</code> produces <code>4</code>.</p>
+
+			</div>
+			
+			<hr/>
+		</section>
+		<section>
+			<h2><p>Builtin functions</p>
+</h2>
+			<p>Jsq comes with a set of builtin functions that allow you to perform extra operations on your
+data, like filtering or transforming. Every function listed here is written in JavaScript,
+and defined in the public <code>jsq.fn</code> object, so it&#39;s possible to alter them, or add new ones
+of your own.</p>
+
+			
 			<div>
 				<h3><p><code>length</code></p>
 </h3>
@@ -365,6 +386,22 @@ mean summed, concatenated or merged depending on the types
 of the elements of the input array - the rules are the same
 as those for the <code>+</code> operator (described above).</p>
 <p>If the input is an empty array, <code>add</code> returns <code>null</code>.</p>
+
+			</div>
+			<div>
+				<h3><p><code>tonumber</code></p>
+</h3>
+				<p>The <code>tonumber</code> function will parse its input as a number, or return <code>0</code> when it&#39;s not
+able to produce a number.</p>
+
+			</div>
+			<div>
+				<h3><p><code>tostring</code></p>
+</h3>
+				<p>The <code>tostring</code> function prints its input as a string. Strings are left unchanged, and all
+other values are JSON-encoded. Jsq uses <code>JSON.stringify</code> for this, so make sure it is
+available (it is in modern browsers, but for older browser you might need to include 
+<a href="https://github.com/douglascrockford/JSON-js">json.js</a>)</p>
 
 			</div>
 			<div>

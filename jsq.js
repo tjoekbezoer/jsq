@@ -32,17 +32,13 @@
 	}
 	function _each( obj, iterator ) {
 		if( obj == null ) return;
-		if( Array.prototype.forEach && obj.forEach === Array.prototype.forEach ) {
-			obj.forEach(iterator);
-		} else if( obj.length === +obj.length ) {
+		if( obj instanceof Array ) {
 			for( var i = 0, l = obj.length; i < l; i++ ) {
 				if( iterator(obj[i], i, obj) === false ) return;
 			}
-		} else {
+		} else if( obj instanceof Object ) {
 			for( var key in obj ) {
-				if( Object.prototype.hasOwnProperty.call(obj, key) ) {
-					if( iterator(obj[key], key, obj) === false ) return;
-				}
+				if( iterator(obj[key], key, obj) === false ) return;
 			}
 		}
 	}
@@ -51,24 +47,24 @@
 	// When target is an array: return a copy of target where all values also existing in
 	// source are removed. In this case, source can also be a scalar value.
 	function _without( target, source ) {
-		var key, key_target;
 		if( target instanceof Array ) {
-			if( !(source instanceof Object) )
+			if( !(source instanceof Array) )
 				source = [source];
 			target = target.slice(0);
 			// Exclude values found in the source array
 			for( var i=0; i<source.length; i++ ) {
-				value = source[i];
 				for( var j=0; j<target.length; j++ ) {
-					if( target[j] === value )
+					if( target[j] === source[i] ) {
 						target.splice(j, 1);
+						i--;
+					}
 				}
 			}
 		} else if( target instanceof Object && source instanceof Object ) {
 			target = _extend({}, target);
 			// Exclude keys found in the source object
-			for( key in source ) {
-				for( key_target in target ) {
+			for( var key in source ) {
+				for( var key_target in target ) {
 					if( key_target == key )
 						delete target[key_target];
 				}
@@ -80,16 +76,23 @@
 		
 		return target;
 	}
-	// `which` is 'max', or 'min'
-	function _extreme( which, input ) {
-		if( input instanceof Array ) {
+	// `which` is 'max', or 'min' -- Used in jsq.fn.min/max.
+	// If an argument is supplied, run it for each input element.
+	function _extreme( which, input, argument, undefined ) {
+		if( input instanceof Array && !argument ) {
 			return Math[which].apply(Math, input);
 		} else if( input instanceof Object ) {
-			var max = 0;
-			_each(input, function( val ) {
-				max = Math[which](max, val);
+			var max, obj;
+			_each(input, function( el ) {
+				var val = argument ? _expression([el], [], argument)[0] : el;
+				if( val === undefined ) return;
+				
+				if( max === undefined || Math[which](max, val) == val ) {
+					max = val;
+					if( argument ) obj = el;
+				}
 			});
-			return max;
+			return argument ? obj : max;
 		} else {
 			return input;
 		}
@@ -111,7 +114,7 @@
 			// (3) assignment operator
 			'(as(?= )|=|\\|=|\\+=|-=|\\*=|/=)|',
 			// (4) arithmetic operator
-			'([-+*/\\\\^]|&)|',
+			'([-+*/]|and|or|xor)|',
 			// (5) control character
 			'([\\.,:|\\[\\]\\(\\){}])|',
 			// (6) boolean
@@ -420,8 +423,8 @@
 						(prev.value == '+' || prev.value == '-')
 					) ||
 					// Bitwise precedence
-					token.data == '&' && (prev.value == '^' || prev.value == '\\') ||
-					token.data == '^' && prev.value == '\\'
+					token.data == 'and' && (prev.value == 'xor' || prev.value == 'or') ||
+					token.data == 'xor' && prev.value == 'or'
 				)
 			)
 		) {
@@ -797,9 +800,9 @@
 					case '-':
 					case '*':
 					case '/':
-					case '&':
-					case '\\':
-					case '^':
+					case 'and':
+					case 'or':
+					case 'xor':
 					case '&&':
 					case '||':
 					case '==':
@@ -843,9 +846,9 @@
 		'<=':  function( l, r ) { return l <= r },
 		'>':   function( l, r ) { return l > r },
 		'<':   function( l, r ) { return l < r },
-		'&':   function( l, r ) { return l & r },
-		'\\':  function( l, r ) { return l | r },
-		'^':   function( l, r ) { return l ^ r }
+		'and':   function( l, r ) { return l & r },
+		'or':  function( l, r ) { return l | r },
+		'xor':   function( l, r ) { return l ^ r }
 	};
 	function _expression( input, output, branch ) {
 		var col, i, result;
@@ -998,7 +1001,7 @@
 	}
 	function _function( input, output, branch ) {
 		if( branch.value && typeof jsq['fn'][branch.value] == 'function' ) {
-			jsq['fn'][branch.value](input, output, branch.children[0] && branch.children[0].children[0]);
+			jsq['fn'][branch.value](input[0], output, branch.children[0] && branch.children[0].children[0]);
 		}
 	}
 	// Creating an object is a complex one. When defining an object in JSQ, multiple actual objects
@@ -1078,10 +1081,12 @@
 	// callback = function(value, index, outputArray)
 	var jsq = function( /*data..., query, callback, ctx*/ ) {
 		// Determine arguments
-		var input = [],
-				args = Array.prototype.slice.call(arguments, 0),
-				arg, node, output, i, parser,
-				query, callback, ctx;
+		var input = []
+			, args = Array.prototype.slice.call(arguments, 0)
+			, output = []
+			, arg, node, i, parser
+			, query, callback, ctx;
+		
 		// All arguments preceding the query are input values
 		while( (arg = args.shift()) && typeof arg != 'string' )
 			input.push(arg);
@@ -1094,14 +1099,21 @@
 		parser = new Parser(query);
 		parser.parse();
 		if( node = parser.tree.children[0] ) {
-			output = _expression(input, [], node);
+			if( input.length ) {
+				_each(input, function( input ) {
+					_expression([input], output, node);
+				});
+			} else {
+				_expression(input, output, node);
+			}
+			
 			// Reset _vars for this query
 			_vars = {};
 			if( typeof callback == 'function' ) {
-				for( i=0; i<output.length; i++ ) {
-					if( callback.call(ctx, output[i], i, output) === false )
-						break;
-				}
+				// If a callback is provided, iterate through results, breaking when return===false.
+				_each(output, function() {
+					return callback.apply(ctx, arguments);
+				});
 			}
 			return output;
 		} else {
@@ -1114,24 +1126,21 @@
 	// Modules
 	jsq['fn'] = {
 		'add': function( input, output ) {
-			var ret = 0, i;
-			for( i=0; i<input.length; i++ ) {
-				ret += input[i] instanceof Array ?
-					arguments.callee(input[i]) :
-					input[i] == +input[i] ? input[i] : 0;
-			}
+			var ret, undefined;
+			_each(input, function( val ) {
+				ret = ret==undefined ? val : ret+val;	
+			});
 			
-			return output && output.push(ret) || ret;
+			return output.push(ret);
 		},
 		'if': function( input, output, argument ) {
 			if( argument && argument.name == 'list' && argument.children.length >= 2 ) {
 				var children = argument.children
+					, input = [input] // <-- ATTENTION
 					, exp = _expression(input, [], children[0])
 					, i;
 				for( i=0; i<exp.length; i++ ) {
-					if( exp[i] ) {
-						return _expression(input, output, children[1]);
-					}
+					if( exp[i] ) return _expression(input, output, children[1]);
 				}
 				if( children[2] )
 					_expression(input, output, children[2]);
@@ -1143,70 +1152,92 @@
 			return;
 		},
 		'format': function( input, output, argument ) {
-			if( argument && argument.name == 'string' ) {
-				var values = input.slice(0);
-				values.unshift(argument.value);
-				output.push(_sprintf.apply(this, values));
-			}
+			if( !(input instanceof Array) || !argument || argument.name != 'string' )
+				return;
+			
+			input = input.slice(0);
+			input.unshift(argument.value);
+			output.push(_sprintf.apply(this, input));
 		},
 		'keys': function( input, output ) {
-			_each(input, function( input ) {
-				if( input instanceof Object ) {
-					if( input instanceof Array ) {
-						for( var i=0; i<input.length; i++ )
-							output.push(i);
-					} else {
-						for( var key in input )
-							output.push(key);
-					}
-				}
+			var ret = [];
+			_each(input, function( val, key ) {
+				ret.push(key);
 			});
+			if( ret.length )
+				output.push(ret);
 		},
 		'length': function( input, output ) {
-			_each(input, function( input ) {
-				if( input instanceof Array || typeof input == 'string' ) {
-					return output.push(input.length);
-				} else if( input instanceof Object ) {
-					var count = 0;
-					for( var key in input )
-						count++;
-					return output.push(count);
-				}
-			});
+			if( input instanceof Array || typeof input == 'string' ) {
+				return output.push(input.length);
+			} else if( input instanceof Object ) {
+				var count = 0;
+				for( var key in input )
+					count++;
+				return output.push(count);
+			}
 		},
 		'map': function( input, output, argument ) {
-			_each(input, function( input ) {
-				if( input instanceof Object ) {
-					_each(input, function( input ) {
-						output.push.apply(output, _expression([input], [], argument));
-					});
-				}
-			});
+			if( input instanceof Object ) {
+				_each(input, function( input ) {
+					output.push.apply(output, _expression([input], [], argument));
+				});
+			}
 		},
 		'max': function( input, output, argument ) {
-			input = argument ? _expression(input, [], argument)[0] : input[0];
-			output.push(_extreme('max', input));
+			output.push(_extreme('max', input, argument));
 		},
 		'min': function( input, output, argument ) {
-			input = argument ? _expression(input, [], argument)[0] : input[0];
-			output.push(_extreme('min', input));
+			output.push(_extreme('min', input, argument));
 		},
-		'recurse': function( input, output, argument ) {
+		'pairs': function( input, output ) {
+			var ret = [];
+			_each(input, function( val, key ) {
+				ret.push([key, val]);
+			});
+			if( ret.length )
+				output.push(ret);
+		},
+		'recurse': function( input, output, argument, level ) {
 			if( argument && argument.name == 'filter' ) {
+				if( !level ) {
+					input = [input];
+					level = 0;
+				}
+				level++;
+				
 				for( var i=0; i<input.length; i++ ) {
 					output.push(input[i]);
 					var exp = _expression([input[i]], [], argument);
-					if( exp.length ) {
-						this.recurse(exp, output, argument);
-					}
+					if( exp.length )
+						this.recurse(exp, output, argument, level);
 				}
 			}
 		},
 		'select': function( input, output, argument ) {
-			for( var i=0; i<input.length; i++ ) {
-				var result = _expression([input[i]], [], argument);
-				if( result.length == 1 && result[0] )
-					output.push(input[i]);
+			_each( _expression([input], [], argument), function( result ) {
+				if( result )
+					return output.push(result) && false;
+			});
+		},
+		'tonumber': function( input, output, argument, undefined ) {
+			if( !argument ) {
+				output.push(~~parseFloat(input));
+			} else {
+				var exp = _expression([input], [], argument);
+				for( var i=0; i<exp.length; i++ ) {
+					output.push(~~parseFloat(exp[i]));
+				}
+			}
+		},
+		'tostring': function( input, output, argument, undefined ) {
+			if( !argument ) {
+				input != undefined && output.push(JSON.stringify(input));
+			} else {
+				var exp = _expression([input], [], argument);
+				for( var i=0; i<exp.length; i++ ) {
+					exp[i] != undefined && output.push(JSON.stringify(exp[i]));
+				}
 			}
 		}
 	};
@@ -1214,7 +1245,7 @@
 	
 	// Expose jsq
 	// ----------
-	// Based on Lo-Dashes implementation.
+	// Based on Lo-Dash's implementation.
 	// 
 	// Detect free variable `exports`.
 	var freeExports = typeof exports == 'object' && exports;
