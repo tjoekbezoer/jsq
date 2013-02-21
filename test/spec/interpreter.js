@@ -68,8 +68,14 @@
 		eq('1+4/2+1', [4]);
 		eq('(2+4)/3+1', [3]);
 		eq('((2+4)*2+3)*2', [30]);
-		
-		// TODO: Advanced arithmetic with mixed values (array+array, array-array, etc).
+		// Mixed values (array+array, array-array, etc).
+		eq(multiple, '.[0]+.[1]', [{first:4, second:5, third:3}], 'Adding objects');
+		eq(multiple, '.[0]-.[1]', [{third:3}], 'Subtracting objects');
+		eq(multiple, '.[0] as $obj | .[0]-.[1]', [{first:1, second:2, third:3}], 'Arithmetic on objects is by value');
+		eq('[1,2]+[3,4]', [[1,2,3,4]], 'Adding arrays');
+		eq('[1,2,3,3,4] - [2,3]', [[1,4]], 'Subtracting arrays');
+		eq('[1,2]+3', [[1,2,3]], 'Adding scalar to array');
+		eq('[1,2,3,3,4]-3', [[1,2,4]], 'Subtracting scalar from array');
 		
 		// Logical
 		eq('1&&2, 2&&1, 1 && 2, 1	&&	2', [2,1,2,2]);
