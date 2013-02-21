@@ -47,24 +47,24 @@
 	// When target is an array: return a copy of target where all values also existing in
 	// source are removed. In this case, source can also be a scalar value.
 	function _without( target, source ) {
-		var key, key_target;
 		if( target instanceof Array ) {
-			if( !(source instanceof Object) )
+			if( !(source instanceof Array) )
 				source = [source];
 			target = target.slice(0);
 			// Exclude values found in the source array
 			for( var i=0; i<source.length; i++ ) {
-				value = source[i];
 				for( var j=0; j<target.length; j++ ) {
-					if( target[j] === value )
+					if( target[j] === source[i] ) {
 						target.splice(j, 1);
+						i--;
+					}
 				}
 			}
 		} else if( target instanceof Object && source instanceof Object ) {
 			target = _extend({}, target);
 			// Exclude keys found in the source object
-			for( key in source ) {
-				for( key_target in target ) {
+			for( var key in source ) {
+				for( var key_target in target ) {
 					if( key_target == key )
 						delete target[key_target];
 				}
