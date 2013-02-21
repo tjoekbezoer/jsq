@@ -1219,6 +1219,26 @@
 				if( result )
 					return output.push(result) && false;
 			});
+		},
+		'tonumber': function( input, output, argument, undefined ) {
+			if( !argument ) {
+				output.push(~~parseFloat(input));
+			} else {
+				var exp = _expression([input], [], argument);
+				for( var i=0; i<exp.length; i++ ) {
+					output.push(~~parseFloat(exp[i]));
+				}
+			}
+		},
+		'tostring': function( input, output, argument, undefined ) {
+			if( !argument ) {
+				input != undefined && output.push(JSON.stringify(input));
+			} else {
+				var exp = _expression([input], [], argument);
+				for( var i=0; i<exp.length; i++ ) {
+					exp[i] != undefined && output.push(JSON.stringify(exp[i]));
+				}
+			}
 		}
 	};
 	
