@@ -31,16 +31,17 @@
 		return array1.concat(array2);
 	}
 	function _each( obj, iterator ) {
-		if( obj == null ) return;
 		if( obj instanceof Array ) {
 			for( var i = 0, l = obj.length; i < l; i++ ) {
-				if( iterator(obj[i], i, obj) === false ) return;
+				if( iterator(obj[i], i, obj) === false ) return false;
 			}
 		} else if( obj instanceof Object ) {
 			for( var key in obj ) {
-				if( iterator(obj[key], key, obj) === false ) return;
+				if( iterator(obj[key], key, obj) === false ) return false;
 			}
 		}
+		
+		return true;
 	}
 	// When target is an object: return a shallow copy of target from which all keys
 	// also existing in source are removed. Both arguments have to be objects.
@@ -1169,12 +1170,14 @@
 		},
 		'length': function( input, output ) {
 			if( input instanceof Array || typeof input == 'string' ) {
-				return output.push(input.length);
+				output.push(input.length);
 			} else if( input instanceof Object ) {
 				var count = 0;
 				for( var key in input )
 					count++;
-				return output.push(count);
+				output.push(count);
+			} else if( input === null ) {
+				output.push(0);
 			}
 		},
 		'map': function( input, output, argument ) {
@@ -1215,10 +1218,11 @@
 			}
 		},
 		'select': function( input, output, argument ) {
-			_each( _expression([input], [], argument), function( result ) {
-				if( result )
-					return output.push(result) && false;
+			var result = _each( _expression([input], [], argument), function( exp ) {
+				if( exp ) return false;
 			});
+			if( !result )
+				output.push(input);
 		},
 		'tonumber': function( input, output, argument, undefined ) {
 			if( !argument ) {
