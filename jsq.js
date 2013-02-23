@@ -1161,12 +1161,9 @@
 			output.push(_sprintf.apply(this, input));
 		},
 		'keys': function( input, output ) {
-			var ret = [];
 			_each(input, function( val, key ) {
-				ret.push(key);
+				output.push(key);
 			});
-			if( ret.length )
-				output.push(ret);
 		},
 		'length': function( input, output ) {
 			if( input instanceof Array || typeof input == 'string' ) {
@@ -1194,12 +1191,9 @@
 			output.push(_extreme('min', input, argument));
 		},
 		'pairs': function( input, output ) {
-			var ret = [];
 			_each(input, function( val, key ) {
-				ret.push([key, val]);
+				output.push([key, val]);
 			});
-			if( ret.length )
-				output.push(ret);
 		},
 		'recurse': function( input, output, argument, level ) {
 			if( argument && argument.name == 'filter' ) {
