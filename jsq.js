@@ -1219,13 +1219,18 @@
 				output.push(input);
 		},
 		'tonumber': function( input, output, argument, undefined ) {
-			if( !argument ) {
-				output.push(~~parseFloat(input));
-			} else {
-				var exp = _expression([input], [], argument);
-				for( var i=0; i<exp.length; i++ ) {
-					output.push(~~parseFloat(exp[i]));
-				}
+			if( argument )
+				input = _expression([input], [], argument);
+			else
+				input = [input];
+			
+			for( var i=0; i<input.length; i++ ) {
+				if( input[i] instanceof Object )
+					output.push(null);
+				else if( typeof input[i] == 'boolean' )
+					output.push(~~input[i]);
+				else
+					output.push(parseFloat(input[i]) || null);
 			}
 		},
 		'tostring': function( input, output, argument, undefined ) {
