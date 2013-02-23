@@ -4,7 +4,7 @@ test('runs with all argument combinations', function() {
 	
 	// Return value
 	deepEqual(jsq([1,2], '.[]'), [1,2], 'Return value with input');
-	deepEqual(jsq([1,2], [3,4], 'add, keys'), [3,[0,1],7,[0,1]], 'Return value with multiple inputs');
+	deepEqual(jsq([1,2], [3,4], 'add, keys'), [3,0,1,7,0,1], 'Return value with multiple inputs');
 	deepEqual(jsq('1,2'), [1,2], 'Return value without input');
 	
 	// Calling jsq with empty query
