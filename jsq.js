@@ -1129,7 +1129,7 @@
 		'add': function( input, output ) {
 			var ret, undefined;
 			_each(input, function( val ) {
-				ret = ret==undefined ? val : ret+val;	
+				ret = ret==undefined ? val : _binary.op['+'](ret, val);
 			});
 			
 			return output.push(ret);
