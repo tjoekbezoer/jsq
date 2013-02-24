@@ -101,7 +101,7 @@
 	// Replaces %# in a string with the (#+1)th argument.
 	function _sprintf( str /* ,replacement... */ ) {
 		var args = Array.prototype.slice.call(arguments, 1);
-		return typeof str == 'string' && str.replace(/%(\d+)/g, function(match, i) { 
+		return typeof str == _b.STRING && str.replace(/%(\d+)/g, function(match, i) { 
 			return args[i] || '';
 		});
 	};
@@ -155,6 +155,34 @@
 		itg:		12,
 		str:		13,
 		wsp:		14
+	};
+	
+	var _b = {
+		ARGUMENT: "argument",
+		ASSIGNMENT: "assignment",
+		BINARY: "binary",
+		BOOL: "bool",
+		COLLECT: "collect",
+		ELEMENT: "element",
+		FILTER: "filter",
+		FUNCTION_CALL: "function_call",
+		KEY: "key",
+		KEY_ALL: "key_all",
+		LIST: "list",
+		NAME: "name",
+		NIL: "null",
+		NUMBER: "number",
+		OBJECT: "object",
+		OPERATOR: "operator",
+		PARENS: "parens",
+		PIPE: "pipe",
+		PROGRAM: "program",
+		STRING: "string",
+		TARGET: "target",
+		UNARY: "unary",
+		UNDEFINED: "undefined",
+		VALUE: "value",
+		VARIABLE: "variable"
 	};
 	
 	// Error messages.
@@ -226,6 +254,11 @@
 			num++;
 		return this.tokens[num] || null;
 	};
+	// Set the cursor num||1 tokens back.
+	Lexer.prototype.prev = function( num ) {
+		this.i -= num || 1;
+		return this.tokens[this.i] || (this.i=0) || null;
+	};
 	Lexer.prototype.skip = function( returnNext ) {
 		var t;
 		while( (t = this.peek()) && t.type == _t.wsp )
@@ -239,7 +272,7 @@
 		// Unique ID for every branch
 		this.id = 0;
 		this.tokens = new Lexer(query);
-		this.tree = this.add('program');
+		this.tree = this.add(_b.PROGRAM);
 	};
 	Parser.prototype.add = function( name ) {
 		var d;
@@ -286,13 +319,13 @@
 					this.parse_assignment(token);
 					break;
 				case _t.bln:
-					this.addup('bool').value = token.data;
+					this.addup(_b.BOOL).value = token.data;
 					break;
 				case _t.nil:
-					this.addup('null');
+					this.addup(_b.NIL);
 					break;
 				case _t.udf:
-					this.addup('undefined');
+					this.addup(_b.UNDEFINED);
 					break;
 				case _t.vrb:
 					this.parse_variable();
@@ -340,7 +373,7 @@
 			this.tokens.next();
 		}
 		
-		if( this.tokens.eof() && this.current.name != 'program' )
+		if( this.tokens.eof() && this.current.name != _b.PROGRAM )
 			_error(_e.EOF);
 		
 		return this;
@@ -352,16 +385,16 @@
 		// If assignment follows a pipe, take the end of the pipe
 		// as the value for the assignment. Otherwise the entire pipe
 		// would be taken as input, producing unexpected results.
-		if( this.current.last.name == 'pipe' ) {
+		if( this.current.last.name == _b.PIPE ) {
 			this.current = this.current.last;
 			num = 2;
 		}
 		
-		this.wrap('assignment');
+		this.wrap(_b.ASSIGNMENT);
 		switch( opToken.data ) {
 			case 'as':
 				if( token && token.type == _t.vrb )
-					this.addup('name').value = token.data;
+					this.addup(_b.NAME).value = token.data;
 				break;
 			case '=':
 			case '|=':
@@ -369,19 +402,19 @@
 			case '-=':
 			case '*=':
 			case '/=':
-				if( this.current.last.name != 'filter' )
+				if( this.current.last.name != _b.FILTER )
 					_error(_e.UNEXPECTED_TOKEN, opToken.data, opToken.index);
 				if( opToken.data != '=' && opToken.data != '|=' ) {
 					// Shorthand op for x |= . op filter
-					this.addup('operator').value = '|='
-					this.add('binary');
-					this.addup('filter');
-					this.addup('operator').value = opToken.data.substr(0,1);
+					this.addup(_b.OPERATOR).value = '|='
+					this.add(_b.BINARY);
+					this.addup(_b.FILTER);
+					this.addup(_b.OPERATOR).value = opToken.data.substr(0,1);
 					this.parse();
 					this.up();
 				} else {
 					// = or |=
-					this.addup('operator').value = opToken.data;
+					this.addup(_b.OPERATOR).value = opToken.data;
 					this.parse();
 				}
 				break;
@@ -398,14 +431,14 @@
 		
 		if(
 			lhs && (
-				lhs.name == 'pipe' ||
+				lhs.name == _b.PIPE ||
 				// Value assignment, eg.: .foo=1 or .foo|=.[0]
-				lhs.name == 'assignment' && lhs.children.length == 3 ||
-				token.type == _t.op_arm && lhs.name == 'list' ||
+				lhs.name == _b.ASSIGNMENT && lhs.children.length == 3 ||
+				token.type == _t.op_arm && lhs.name == _b.LIST ||
 				// The left hand side is a binary, so it has 3 children:
 				// a lhs, an operator and a rhs. Perform an action based on
 				// its operator.
-				lhs.name == 'binary' &&
+				lhs.name == _b.BINARY &&
 				(prev = lhs.children[1]) && (
 					// Logical precedence
 					(
@@ -439,17 +472,17 @@
 			// See if the - operator should be parsed as a unary instead.
 			if( token.data == '-' && (
 					!lhs ||
-					lhs.name == 'operator' ||
+					lhs.name == _b.OPERATOR ||
 					// to parse things like 1,-1 and 1,2--1 correctly
-					lhs.parent.name == 'list' && this.tokens.back().data == ',' ||
-					lhs.parent.name == 'pipe'
+					lhs.parent.name == _b.LIST && this.tokens.back().data == ',' ||
+					lhs.parent.name == _b.PIPE
 				)
 			) {
 				this.parse_unary();
 				return;
 			} else if( lhs ) {
-				this.wrap('binary');
-				op = this.addup('operator');
+				this.wrap(_b.BINARY);
+				op = this.addup(_b.OPERATOR);
 				op.value = token.data;
 				op.type = token.type;
 				
@@ -467,7 +500,7 @@
 	Parser.prototype.parse_collection = function() {
 		var token;
 		
-		this.add('collect');
+		this.add(_b.COLLECT);
 		while(
 			(token = this.tokens.peek(true)) &&
 			token.data != ']'
@@ -480,6 +513,106 @@
 			_error(_e.EOF);
 		this.tokens.next();
 		this.up();
+		
+		// Check if this collection has a filter attached.
+		this.parse_filter(true);
+	};
+	// Parses an object filter
+	// wrap==true when the filter is attached to another expression instead
+	// of being a filter on its own. In this case this filter should wrap the
+	// last expression and use it as its input.
+	Parser.prototype.parse_filter = function( wrap ) {
+		var all = true
+			, last, peek, token;
+		
+		if( wrap ) {
+			if( (peek = this.tokens.peek(true)) && 
+					(peek.data == '.' || peek.data == '[')
+			) {
+				// This is a filter on an expression, so wrap that expression as this
+				// filter's target.
+				this.wrap(_b.FILTER);
+				this.wrap(_b.TARGET);
+				this.up();
+			} else {
+				return false;
+			}
+		} else {
+			this.add(_b.FILTER);
+			this.addup(_b.TARGET).value = '.';
+		}
+		
+		while( peek = this.tokens.peek() ) {
+			if( peek.data == '[' ) {
+				all = true;
+				this.tokens.next();
+				while( (peek = this.tokens.peek(true)) && peek.data != ']' ) {
+					this.tokens.skip(true);
+					this.parse();
+					all = false;
+				}
+				
+				if( all ) {
+					this.addup(_b.KEY_ALL);
+					all = false;
+				}
+				
+				if( !(token = this.tokens.skip(true)) || token.data != ']' )
+					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.data, token && token.index);
+			} else if(
+				(this.current.last.name == _b.TARGET && peek.data != '.' || peek.data == '.' && this.tokens.next()) &&
+				(peek = this.tokens.peek()) && (
+					peek.type == _t.id ||
+					peek.type == _t.itg
+				)
+			) {
+				// Shorthand form
+				token = this.tokens.next();
+				if( token.type == _t.id ) {
+					this.addup(_b.STRING).value = token.data;
+				} else {
+					this.addup(_b.NUMBER).value = parseFloat(token.data);
+				}
+			} else {
+				break;
+			}
+		}
+		
+		if( all ) {
+			this.up();
+		} else {
+			if( !this.tokens.current() )
+				_error(_e.EOF);
+			this.up();
+		}
+	};
+	// Parse a function call
+	Parser.prototype.parse_function = function() {
+		var peek, token;
+		
+		this.add(_b.FUNCTION_CALL).value = this.tokens.current().data;
+		
+		if( (peek = this.tokens.peek(true)) && peek.data == '(' ) {
+			this.tokens.skip(true);
+			
+			if( (peek = this.tokens.peek(true)) && peek.data != ')' ) {
+				this.add(_b.ARGUMENT);
+				while( (token = this.tokens.skip(true)) && token.data != ')' ) {
+					this.parse();
+				}
+				this.up();
+				
+				if( !(token = this.tokens.current()) || token.data != ')' )
+					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.data, token && token.index);
+			} else {
+				this.tokens.skip(true);
+			}
+		}
+		
+		this.up();
+		
+		// Check if this function call has a filter attached.
+		this.parse_filter(true);
 	};
 	// Creates a comma separated list of expressions. These lists cannot
 	// be nested. Lists can be nested inside parenthesis and square/curly brackets.
@@ -488,12 +621,12 @@
 				cur = this.current,
 				peek;
 		
-		if( len && (cur = this.current.children[len-1]).name == 'list' ) {
+		if( len && (cur = this.current.children[len-1]).name == _b.LIST ) {
 			// Last child was already a list? Add this to that branch
 			this.current = cur;
 		} else if( len ) {
 			// Otherwise wrap last child and the new value into a new list branch
-			this.wrap('list');
+			this.wrap(_b.LIST);
 		} else {
 			_error(_e.UNEXPECTED_TOKEN, ',', this.tokens.current().index);
 		}
@@ -514,92 +647,14 @@
 		}
 		this.up();
 	};
-	// Parses an object filter
-	Parser.prototype.parse_filter = function() {
-		var all = true,
-			peek, token;
-		
-		// TODO:
-		// Two filters next to eachother without comma, pipe etc. should throw.
-		this.add('filter');
-		
-		while( peek = this.tokens.peek() ) {
-			if( peek.data == '[' ) {
-				all = true;
-				this.tokens.next();
-				while( (peek = this.tokens.peek(true)) && peek.data != ']' ) {
-					this.tokens.skip(true);
-					this.parse();
-					all = false;
-				}
-				
-				if( all ) {
-					this.addup('key_all');
-					all = false;
-				}
-				
-				if( !(token = this.tokens.skip(true)) || token.data != ']' )
-					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.data, token && token.index);
-			} else if(
-				(!this.current.children.length && peek.data != '.' || peek.data == '.' && this.tokens.next()) &&
-				(peek = this.tokens.peek()) && (
-					peek.type == _t.id ||
-					peek.type == _t.itg
-				)
-			) {
-				// Shorthand form
-				token = this.tokens.next();
-				if( token.type == _t.id ) {
-					this.addup('string').value = token.data;
-				} else {
-					this.addup('number').value = parseFloat(token.data);
-				}
-			} else {
-				break;
-			}
-		}
-		
-		if( all ) {
-			this.up();
-		} else {
-			if( !this.tokens.current() )
-				_error(_e.EOF);
-			this.up();
-		}
-	};
-	// Parse a function call
-	Parser.prototype.parse_function = function() {
-		var peek, token;
-		
-		this.add('function_call').value = this.tokens.current().data;
-		
-		if( (peek = this.tokens.peek(true)) && peek.data == '(' ) {
-			this.tokens.skip(true);
-			
-			if( (peek = this.tokens.peek(true)) && peek.data != ')' ) {
-				this.add('argument');
-				while( (token = this.tokens.skip(true)) && token.data != ')' ) {
-					this.parse();
-				}
-				this.up();
-				
-				if( !(token = this.tokens.current()) || token.data != ')' )
-					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.data, token && token.index);
-			} else {
-				this.tokens.skip(true);
-			}
-		}
-		
-		this.up();
-	};
 	// Parse string and numbers
 	// TODO: booleans?
 	Parser.prototype.parse_literal = function() {
 		var token = this.tokens.current();
 		if( token.type == _t.str ) {
-			this.addup('string').value = token.data;
+			this.addup(_b.STRING).value = token.data;
 		} else {
-			this.addup('number').value = parseFloat(token.data);
+			this.addup(_b.NUMBER).value = parseFloat(token.data);
 		}
 	};
 	// Parse object definitions
@@ -607,7 +662,7 @@
 		var error = false,
 			token, peek, key, value;
 		
-		this.add('object');
+		this.add(_b.OBJECT);
 		while( (token = this.tokens.skip(true)) && token.data != '}' ) {
 			key_switch:
 			switch( token.type ) {
@@ -635,15 +690,15 @@
 					} else if( token.type != _t.ctl || token.data == '.' || token.data == '(' ) {
 						// Element is found. The key can be a literal, a filter, or a complex
 						// expression in parenthesis that returns one result
-						this.add('element');
+						this.add(_b.ELEMENT);
 						switch( token.type ) {
 							case _t.itg:
 							case _t.str:
 							case _t.id:
-								this.addup('key').value = token.data;
+								this.addup(_b.KEY).value = token.data;
 								break;
 							default:
-								this.add('key');
+								this.add(_b.KEY);
 								this.parse();
 								this.up();
 						}
@@ -663,7 +718,7 @@
 								case _t.nil:
 								case _t.udf:
 								case _t.vrb:
-									this.add('value');
+									this.add(_b.VALUE);
 									if(
 										// When token is arithmetic, only '-'' is allowed (as a unary)
 										token.type == _t.op_arm && token.data != '-' ||
@@ -675,16 +730,17 @@
 									} else {
 										_error(_e.UNEXPECTED_TOKEN, token.data, token.index);
 									}
-									// Also up out of 'element'
+									// Also up out of _b.ELEMENT
 									this.up(2);
 									break key_switch;
 							}
 						} else if( token.type != _t.ctl && peek && (peek.data == ',' || peek.data == '}') ) {
 							// Shortcut filter
-							this.add('value');
-							this.add('filter');
-							this.addup('string').value = token.data;
-							// Also up out of 'element'
+							this.add(_b.VALUE);
+							this.add(_b.FILTER);
+							this.addup(_b.TARGET).value = '.';
+							this.addup(_b.STRING).value = token.data;
+							// Also up out of _b.ELEMENT
 							this.up(3);
 							break;
 						}
@@ -697,14 +753,16 @@
 	};
 	Parser.prototype.parse_parens = function() {
 		var token;
-		this.add('parens');
+		this.add(_b.PARENS);
 		while( (token = this.tokens.skip(true)) && token.data != ')' )
 			this.parse();
 		this.up();
+		// Check if these parentheses has a filter attached.
+		this.parse_filter(true);
 	};
 	// 
 	Parser.prototype.parse_pipe = function() {
-		this.wrap('pipe');
+		this.wrap(_b.PIPE);
 		this.tokens.skip(true);
 		this.parse();
 		this.up();
@@ -713,19 +771,18 @@
 		var token = this.tokens.current();
 		if( !this.tokens.skip(true) )
 			_error(_e.EOF);
-		this.add('unary').value = token.data;
+		this.add(_b.UNARY).value = token.data;
 		this.parse();
 		this.up();
 	};
 	Parser.prototype.parse_variable = function() {
-		var current = this.add('variable'),
+		var current = this.add(_b.VARIABLE),
 				peek;
 		current.value = this.tokens.current().data;
 		
-		if( (peek = this.tokens.peek()) && (peek.data == '[' || peek.data == '.') )
-			this.parse_filter();
-		
 		this.up();
+		// Check if this variable has a filter attached.
+		this.parse_filter(true);
 	};
 	Parser.prototype.toJSON = function( branch ) {
 		var ret = {}, key;
@@ -761,7 +818,7 @@
 	};
 	// Say you have:
 	//    program > filter
-	// Now when you do wrap('list'):
+	// Now when you do wrap(_b.LIST):
 	//    program > list > filter
 	Parser.prototype.wrap = function( name ) {
 		var last, parent, ret;
@@ -782,10 +839,10 @@
 		var op = branch.children[1].value,
 			lhv = branch.children[0],
 			rhv = branch.children[2];
-		var l = lhv.name == 'number' ?
+		var l = lhv.name == _b.NUMBER ?
 			[lhv.value] :
 			_expression(input, [], lhv);
-		var r = rhv.name == 'number' ?
+		var r = rhv.name == _b.NUMBER ?
 			[rhv.value] :
 			_expression(input, [], rhv);
 		var i, j, ret, key;
@@ -855,57 +912,57 @@
 		var col, i, result;
 		
 		switch( branch.name ) {
-			case 'assignment':
+			case _b.ASSIGNMENT:
 				_assignment(input, output, branch.children);
 				break;
-			case 'binary':
+			case _b.BINARY:
 				_binary(input, output, branch);
 				break;
-			case 'bool':
+			case _b.BOOL:
 				output.push(branch.value=='true'?true:false);
 				break;
-			case 'collect':
+			case _b.COLLECT:
 				col = [];
 				branch.children.length && _expression(input, col, branch.children[0]);
 				output.push(col);
 				break;
-			case 'list':
+			case _b.LIST:
 				for( i=0; i<branch.children.length; i++ )
 					_expression(input, output, branch.children[i]);
 				break;
-			case 'filter':
+			case _b.FILTER:
 				_filter(input, input, output, branch.children);
 				break;
-			case 'function_call':
+			case _b.FUNCTION_CALL:
 				_function(input, output, branch);
 				break;
-			case 'null':
+			case _b.NIL:
 				output.push(null);
 				break;
-			case 'number':
-			case 'string':
+			case _b.NUMBER:
+			case _b.STRING:
 				output.push(branch.value);
 				break;
-			case 'object':
+			case _b.OBJECT:
 				_object(input, output, branch.children);
 				break;
-			case 'parens':
+			case _b.PARENS:
 				result = _expression(input, [], branch.children[0]);
 				output.push.apply(output, result);
 				break;
-			case 'pipe':
+			case _b.PIPE:
 				input = _expression(input, output, branch.children[0]);
 				input = input.splice(0,input.length);
 				for( i=0; i<input.length; i++ )
 					_expression([input[i]], output, branch.children[1]);
 				break;
-			case 'unary':
+			case _b.UNARY:
 				_unary(input, output, branch);
 				break;
-			case 'undefined':
+			case _b.UNDEFINED:
 				output.push(void(0));
 				break;
-			case 'variable':
+			case _b.VARIABLE:
 				_variable(input, output, branch);
 				break;
 		}
@@ -952,7 +1009,7 @@
 	// 
 	// `all` is always the full input; `input` is a subset upon recursion.
 	function _filter( all, input, output, filter, callback ) {
-		var child, i, j, element, key, sub;
+		var target, child, i, j, element, key, sub;
 		
 		// No callback? Then perform default action: returning found value as result.
 		if( !callback ) {
@@ -962,6 +1019,15 @@
 		}
 		
 		filter = filter.slice(0);
+		
+		// Root call
+		if( all === input ) {
+			target = filter.shift();
+			if( !target.value && target.children.length ) {
+				input = _expression(input, [], target.children[0]);
+			}
+		}
+		
 		child = filter.shift();
 		for( j=0; j<input.length; j++ ) {
 			element = input[j];
@@ -971,16 +1037,16 @@
 			// TODO: `range` as key selector for arrays
 			if( !child ) {
 				callback(element);
-			} else if( child.name == 'key_all' ) {
+			} else if( child.name == _b.KEY_ALL ) {
 				// All elements
 				_each(element, !filter.length ? callback : function( val ) {
 					_filter(all, [val], output, filter, callback);
 				});
 			} else if(
-				element instanceof Array && child.name == 'number' ||
+				element instanceof Array && child.name == _b.NUMBER ||
 				!(element instanceof Array ) && element instanceof Object && (
-					child.name == 'number' ||
-					child.name == 'string'
+					child.name == _b.NUMBER ||
+					child.name == _b.STRING
 				)
 			) {
 				// Single element
@@ -1053,12 +1119,7 @@
 		}
 	}
 	function _variable( input, output, branch ) {
-		var filter;
-		if( filter = branch.children[0] ) {
-			_filter(input, _vars[branch.value], output, filter.children);
-		} else {
-			output.push.apply(output, _vars[branch.value]);
-		}
+		output.push.apply(output, _vars[branch.value]);
 	}
 	function _unary( input, output, branch ) {
 		var op = branch.value,
@@ -1089,9 +1150,9 @@
 			, query, callback, ctx;
 		
 		// All arguments preceding the query are input values
-		while( (arg = args.shift()) && typeof arg != 'string' )
+		while( (arg = args.shift()) && typeof arg != _b.STRING )
 			input.push(arg);
-		if( typeof arg != 'string' ) return [];
+		if( typeof arg != _b.STRING ) return [];
 		query = arg;
 		if( callback = args.shift() )
 			ctx = args.shift() || this;
@@ -1135,7 +1196,7 @@
 			return output.push(ret);
 		},
 		'if': function( input, output, argument ) {
-			if( argument && argument.name == 'list' && argument.children.length >= 2 ) {
+			if( argument && argument.name == _b.LIST && argument.children.length >= 2 ) {
 				var children = argument.children
 					, input = [input] // <-- ATTENTION
 					, exp = _expression(input, [], children[0])
@@ -1153,7 +1214,7 @@
 			return;
 		},
 		'format': function( input, output, argument ) {
-			if( !(input instanceof Array) || !argument || argument.name != 'string' )
+			if( !(input instanceof Array) || !argument || argument.name != _b.STRING )
 				return;
 			
 			input = input.slice(0);
@@ -1166,7 +1227,7 @@
 			});
 		},
 		'length': function( input, output ) {
-			if( input instanceof Array || typeof input == 'string' ) {
+			if( input instanceof Array || typeof input == _b.STRING ) {
 				output.push(input.length);
 			} else if( input instanceof Object ) {
 				var count = 0;
@@ -1196,7 +1257,7 @@
 			});
 		},
 		'recurse': function( input, output, argument, level ) {
-			if( argument && argument.name == 'filter' ) {
+			if( argument && argument.name == _b.FILTER ) {
 				if( !level ) {
 					input = [input];
 					level = 0;
@@ -1255,16 +1316,16 @@
 
 	// Detect free variable `global` and use it as `window`.
 	var freeGlobal = typeof global == 'object' && global;
-	if( freeGlobal.global === freeGlobal ) {
+	if( freeGlobal['global'] === freeGlobal ) {
 	  window = freeGlobal;
 	}
 	
 	// some AMD build optimizers, like r.js, check for specific condition patterns like the following:
-	if( typeof define == 'function' && typeof define.amd == 'object' && define.amd ) {
+	if( typeof define == 'function' && typeof define['amd'] == 'object' && define['amd'] ) {
 	  // Expose jsq to the global object even when an AMD loader is present in
 	  // case jsq was injected by a third-party script and not intended to be
 	  // loaded as a module.
-	  window.jsq = jsq;
+	  window['jsq'] = jsq;
 
 	  // Define as an anonymous module so, through path mapping, it can be
 	  // referenced as the 'jsq' function.
@@ -1273,15 +1334,15 @@
 	  });
 	} else if( freeExports ) {
 		// Check for `exports` after `define` in case a build optimizer adds an `exports` object.
-	  if( typeof module == 'object' && module && module.exports == freeExports ) {
+	  if( typeof module == 'object' && module && module['exports'] == freeExports ) {
 	  	// In Node.js or RingoJS v0.8.0+.
-	    (module.exports = jsq).jsq = jsq;
+	    (module['exports'] = jsq)['jsq'] = jsq;
 	  } else {
 	  	// In Narwhal or RingoJS v0.7.0-.
-	    freeExports.jsq = jsq;
+	    freeExports['jsq'] = jsq;
 	  }
 	} else {
 	  // In a browser or Rhino.
-	  window.jsq = jsq;
+	  window['jsq'] = jsq;
 	}
 })(this);

@@ -1,1 +1,5 @@
-java -jar compiler.jar --compilation_level SIMPLE_OPTIMIZATIONS --js ../jsq.js > ../jsq.min.js
+java -jar compiler.jar \
+	--compilation_level ADVANCED_OPTIMIZATIONS \
+	--js ../jsq.js \
+	--output_wrapper ";(function() {%output%})();" \
+> ../jsq.min.js
