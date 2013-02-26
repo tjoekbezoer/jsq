@@ -392,7 +392,296 @@ sections:
         body: |
           
           These operators are similar to JavaScript's `&`, `|` and `^`.
-    
+
+  - title: Assignment
+    body: |
+
+      Assignment works a little differently in jsq than in most
+      programming languages. jsq doesn't distinguish between references
+      to and copies of something - two objects or arrays are either
+      equal or not equal, without any further notion of being "the
+      same object" or "not the same object".
+
+      If an object has two fields which are arrays, `.foo` and `.bar`,
+      and you append something to `.foo`, then `.bar` will not get
+      bigger. Even if you've just set `.bar = .foo`. If you're used to
+      programming in languages like Python, Java, Ruby, Javascript,
+      etc. then you can think of it as though jsq does a full deep copy
+      of every object before it does the assignment (for performance,
+      it doesn't actually do that, but that's the general idea).
+
+    entries:
+      - title: "`=`"
+        body: |
+          
+          The filter `.foo = 1` will take as input an object
+          and produce as output an object with the "foo" field set to
+          1. There is no notion of "modifying" or "changing" something
+          in jsq - all jsq values are immutable. For instance,
+          
+          ```jsq
+          .foo = .bar | .foo.baz = 1
+          ```
+          
+          will not have the side-effect of setting .bar.baz to be set
+          to 1, as the similar-looking program in Javascript, Python,
+          Ruby or other languages would. Unlike these languages (but
+          like Haskell and some other functional languages), there is
+          no notion of two arrays or objects being "the same array" or
+          "the same object". They can be equal, or not equal, but if
+          we change one of them in no circumstances will the other
+          change behind our backs.
+          
+          This means that it's impossible to build circular values in
+          jsq (such as an array whose first element is itself). This is
+          quite intentional, and ensures that anything a jsq program
+          can produce can be represented in JSON.
+
+      - title: "`|=`"
+        body: |
+          As well as the assignment operator '=', jsq provides the "update"
+          operator '|=', which takes a filter on the right-hand side and
+          works out the new value for the property being assigned to by running
+          the old value through this expression. For instance, .foo |= .+1 will
+          build an object with the "foo" field set to the input's "foo" plus 1.
+          
+          This example should show the difference between '=' and '|='. Provide input
+          
+          ```javascript
+          {"a": {"b": 10}, "b": 20}
+          ```
+          
+          to the programs `.a = .b` and `.a |= .b`
+          
+          The former will set the "a" field of the input to the "b" field of the
+          input, and produce the output {"a": 20}. The latter will set the "a"
+          field of the input to the "a" field's "b" field, producing {"a": 10}.
+
+      - title: "`+=`, `-=`, `*=`, `/=`"
+        body: |
+
+          jsq has a few operators of the form `a op= b`, which are all
+          equivalent to `a |= . op b`. So, `+= 1` can be used to increment values.
+
+        examples:
+          - program: .foo += 1
+            input: '{"foo": 42}'
+            output: ['{"foo": 43}']
+      
+      - title: Complex assignments
+        body: |
+          Lots more things are allowed on the left-hand side of a jsq assignment
+          than in most langauges. We've already seen simple field accesses on
+          the left hand side, and it's no surprise that array accesses work just
+          as well:
+          
+          ```jsq
+          .posts[0].title = "JSQ Manual"
+          ```
+          
+          What may come as a surprise is that the expression on the left may
+          produce multiple results, referring to different points in the input
+          document:
+          
+          ```jsq
+          .posts[].comments |= . + ["this is great"]
+          ```
+          
+          That example appends the string "this is great" to the "comments"
+          array of each post in the input (where the input is an object with a
+          field "posts" which is an array of posts).
+          
+          When jsq encounters an assignment like 'a = b', it records the "path"
+          taken to select a part of the input document while executing a. This
+          path is then used to find which part of the input to change while
+          executing the assignment. Any filter may be used on the
+          left-hand side of an equals - whichever paths it selects from the
+          input will be where the assignment is performed.
+          
+          This is a very powerful operation. Suppose we wanted to add a comment
+          to blog posts, using the same "blog" input above. This time, we only
+          want to comment on the posts written by "tjoekbezoer". We can find those
+          posts using the "select" function described earlier:
+          
+          ```jsq
+          .posts[] | select(.author == "tjoekbezoer")
+          ```
+          
+          The paths provided by this operation point to each of the posts that
+          "tjoekbezoer" wrote, and we can comment on each of them in the same way
+          that we did before:
+          
+          ```jsq
+          (.posts[] | select(.author == "tjoekbezoer") | .comments) |= . + ["terrible."]
+          ```
+
+  - title: Conditionals and Comparisons
+    entries:
+      - title: "`==`, `===`, `!=`"
+        body: |
+          
+          **UNDONE**  
+          The expression 'a == b' will produce 'true' if the result of a and b
+          are equal (that is, if they represent equivalent JSON documents) and
+          'false' otherwise. In particular, strings are never considered equal
+          to numbers. If you're coming from Javascript, jsq's == is like
+          Javascript's === - considering values equal only when they have the
+          same type as well as the same value.
+          
+          != is "not equal", and 'a != b' returns the opposite value of 'a == b'
+
+        examples:
+          - program: '.[] == 1'
+            input: '[1, 1.0, "1", "banana"]'
+            output: ['true', 'true', 'false', 'false']
+      
+      - title: "`>`, `>=`, `<=`, `<`"
+        body: |
+          
+          **UNDONE**  
+          The comparison operators `>`, `>=`, `<=`, `<` behave as expected. Additionaly, it can be
+          used to compare arrays and objects.
+
+          The ordering is the same as that described for `sort`, above.
+
+        examples:
+          - program: '. < 5'
+            input: 2
+            output: ['true']
+      
+      - title: "`if(cond, then[, else])`"
+        body: |
+
+          **UNDONE**  
+          `if(A, B, C)` will execute `B` if `A` evaluates as truthy, otherwise it will optionally
+          execute `C`.
+          
+          Checking for false or null is a simpler notion of
+          "truthiness" than is found in Javascript or Python, but it
+          means that you'll sometimes have to be more explicit about
+          the condition you want: you can't test whether, e.g. a
+          string is empty using `if .name then A else B end`, you'll
+          need something more like `if (.name | count) > 0 then A else
+          B end` instead.
+          
+          If the condition A produces multiple results, it is
+          considered "true" if any of those results is not false or
+          null. If it produces zero results, it's considered false.
+
+        examples:
+          - program: |-
+              if . == 0 then
+                "zero"
+              elif . == 1 then
+                "one"
+              else
+                "many"
+              end
+            input: 2
+            output: ['"many"']
+      
+      - title: "`&&`, `||`, `!`"
+        body: |
+
+          jsq supports the normal Boolean operators `&&` and `||`. They have the
+          same standard of truth as `if` expressions - `false` and `null` are
+          considered "false values", and anything else is a "true value".
+
+          If an operand of one of these operators produces multiple
+          results, the operator itself will produce a result for each input.
+
+          The boolean operators behave the same as JavaScript's, returning the value of the last
+          correct operand. So for example `0 && 2` returns `2`; `!1 || 3` returns `3`.
+          
+          `!` simply negates the proceding value.
+          
+        examples:
+          - program: '42 and "a string"'
+            input: 'null'
+            output: ['true']
+          - program: '(true, false) or false'
+            input: 'null'
+            output: ['true', 'false']
+          - program: '(true, false) and (true, false)'
+            input: 'null'
+            output: ['true', 'false', 'false', 'false']
+          - program: '[true, false | not]'
+            input: 'null'
+            output: ['[false, true]']
+  
+  - title: Variables
+    body: |
+      
+      In jsq, all filters have an input and an output, so manual
+      plumbing is not necessary to pass a value from one part of a program
+      to the next. Many expressions, for instance `a + b`, pass their input
+      to two distinct subexpressions (here `a` and `b` are both passed the
+      same input), so variables aren't usually necessary in order to use a
+      value twice.
+      
+      For instance, calculating the average value of an array of numbers
+      requires a few variables in most languages - at least one to hold the
+      array, perhaps one for each element or for a loop counter. In jsq, it's
+      simply `add / length` - the `add` expression is given the array and
+      produces its sum, and the `length` expression is given the array and
+      produces its length.
+      
+      So, there's generally a cleaner way to solve most problems in jsq that
+      defining variables. Still, sometimes they do make things easier, so jsq
+      lets you define variables using `expression as $variable`. All
+      variable names start with `$`. Here's a slightly uglier version of the
+      array-averaging example:
+      
+      ```jsq
+      length as $array_length | add / $array_length
+      ```
+      
+      We'll need a more complicated problem to find a situation where using
+      variables actually makes our lives easier.
+      
+      
+      Suppose we have an array of blog posts, with "author" and "title"
+      fields, and another object which is used to map author usernames to
+      real names. Our input looks like:
+      
+      ```javascript
+      {
+        "posts": [
+          {"title": "Frist psot", "author": "anon"},
+          {"title": "A well-written article", "author": "person1"}],
+        "realnames": {
+          "anon": "Anonymous Coward",
+          "person1": "Person McPherson"
+        }
+      }
+      ```
+      
+      We want to produce the posts with the author field containing a real
+      name, as in:
+      
+      ```javascript
+      [
+        {"title": "Frist psot", "author": "Anonymous Coward"},
+        {"title": "A well-written article", "author": "Person McPherson"}
+      ]
+      ```
+      
+      We use a variable, $names, to store the realnames object, so that we
+      can refer to it later when looking up author usernames:
+      
+      ```jsq
+      .realnames as $names | .posts[] | {title, author: $names[.author]}
+      ```
+      
+      The expression "foo as $x" runs foo, puts the result in $x,
+      and returns the original input. Apart from the side-effect
+      of binding the variable, it has the same effect as ".".
+
+    examples:
+      - program: '.bar as $x | .foo | . + $x'
+        input: '{"foo":10, "bar":200}'
+        output: ['210']
+
   - title: Builtin functions
     body: |
       
@@ -664,348 +953,6 @@ sections:
           
           Much like a simplified sprintf, `format` accepts an array of values to be integrated
           into a custom string.
-          
-  - title: Conditionals and Comparisons
-    entries:
-      - title: "`==`, `===`, `!=`"
-        body: |
-          
-          **UNDONE**  
-          The expression 'a == b' will produce 'true' if the result of a and b
-          are equal (that is, if they represent equivalent JSON documents) and
-          'false' otherwise. In particular, strings are never considered equal
-          to numbers. If you're coming from Javascript, jsq's == is like
-          Javascript's === - considering values equal only when they have the
-          same type as well as the same value.
-          
-          != is "not equal", and 'a != b' returns the opposite value of 'a == b'
-
-        examples:
-          - program: '.[] == 1'
-            input: '[1, 1.0, "1", "banana"]'
-            output: ['true', 'true', 'false', 'false']
-      
-      - title: "`>`, `>=`, `<=`, `<`"
-        body: |
-          
-          **UNDONE**  
-          The comparison operators `>`, `>=`, `<=`, `<` behave as expected. Additionaly, it can be
-          used to compare arrays and objects.
-
-          The ordering is the same as that described for `sort`, above.
-
-        examples:
-          - program: '. < 5'
-            input: 2
-            output: ['true']
-      
-      - title: if(cond, then[, else])
-        body: |
-
-          **UNDONE**  
-          `if(A, B, C)` will execute `B` if `A` evaluates as truthy, otherwise it will optionally
-          execute `C`.
-          
-          Checking for false or null is a simpler notion of
-          "truthiness" than is found in Javascript or Python, but it
-          means that you'll sometimes have to be more explicit about
-          the condition you want: you can't test whether, e.g. a
-          string is empty using `if .name then A else B end`, you'll
-          need something more like `if (.name | count) > 0 then A else
-          B end` instead.
-          
-          If the condition A produces multiple results, it is
-          considered "true" if any of those results is not false or
-          null. If it produces zero results, it's considered false.
-
-        examples:
-          - program: |-
-              if . == 0 then
-                "zero"
-              elif . == 1 then
-                "one"
-              else
-                "many"
-              end
-            input: 2
-            output: ['"many"']
-      
-      - title: "`&&`, `||`, `!`"
-        body: |
-
-          jsq supports the normal Boolean operators `&&` and `||`. They have the
-          same standard of truth as `if` expressions - `false` and `null` are
-          considered "false values", and anything else is a "true value".
-
-          If an operand of one of these operators produces multiple
-          results, the operator itself will produce a result for each input.
-
-          The boolean operators behave the same as JavaScript's, returning the value of the last
-          correct operand. So for example `0 && 2` returns `2`; `!1 || 3` returns `3`.
-          
-          `!` simply negates the proceding value.
-          
-        examples:
-          - program: '42 and "a string"'
-            input: 'null'
-            output: ['true']
-          - program: '(true, false) or false'
-            input: 'null'
-            output: ['true', 'false']
-          - program: '(true, false) and (true, false)'
-            input: 'null'
-            output: ['true', 'false', 'false', 'false']
-          - program: '[true, false | not]'
-            input: 'null'
-            output: ['[false, true]']
-  
-  - title: Advanced features
-    body: |
-      Variables are an absolute necessity in most programming languages, but
-      they're relegated to an "advanced feature" in jsq.
-
-      In most languages, variables are the only means of passing around
-      data. If you calculate a value, and you want to use it more than once,
-      you'll need to store it in a variable. To pass a value to another part
-      of the program, you'll need that part of the program to define a
-      variable (as a function parameter, object member, or whatever) in
-      which to place the data.
-
-    # Finally, jsq has a `fold` operation, which is very powerful but a
-    # bit tricky. Again, it's mostly used internally, to define some
-    # useful bits of jsq's standard library.
-
-    entries:
-      - title: Variables
-        body: |
-          
-          In jsq, all filters have an input and an output, so manual
-          plumbing is not necessary to pass a value from one part of a program
-          to the next. Many expressions, for instance `a + b`, pass their input
-          to two distinct subexpressions (here `a` and `b` are both passed the
-          same input), so variables aren't usually necessary in order to use a
-          value twice.
-          
-          For instance, calculating the average value of an array of numbers
-          requires a few variables in most languages - at least one to hold the
-          array, perhaps one for each element or for a loop counter. In jsq, it's
-          simply `add / length` - the `add` expression is given the array and
-          produces its sum, and the `length` expression is given the array and
-          produces its length.
-          
-          So, there's generally a cleaner way to solve most problems in jsq that
-          defining variables. Still, sometimes they do make things easier, so jsq
-          lets you define variables using `expression as $variable`. All
-          variable names start with `$`. Here's a slightly uglier version of the
-          array-averaging example:
-          
-          ```jsq
-          length as $array_length | add / $array_length
-          ```
-          
-          We'll need a more complicated problem to find a situation where using
-          variables actually makes our lives easier.
-          
-          
-          Suppose we have an array of blog posts, with "author" and "title"
-          fields, and another object which is used to map author usernames to
-          real names. Our input looks like:
-          
-          ```javascript
-          {
-            "posts": [
-              {"title": "Frist psot", "author": "anon"},
-              {"title": "A well-written article", "author": "person1"}],
-            "realnames": {
-              "anon": "Anonymous Coward",
-              "person1": "Person McPherson"
-            }
-          }
-          ```
-          
-          We want to produce the posts with the author field containing a real
-          name, as in:
-          
-          ```javascript
-          [
-            {"title": "Frist psot", "author": "Anonymous Coward"},
-            {"title": "A well-written article", "author": "Person McPherson"}
-          ]
-          ```
-          
-          We use a variable, $names, to store the realnames object, so that we
-          can refer to it later when looking up author usernames:
-          
-          ```jsq
-          .realnames as $names | .posts[] | {title, author: $names[.author]}
-          ```
-          
-          The expression "foo as $x" runs foo, puts the result in $x,
-          and returns the original input. Apart from the side-effect
-          of binding the variable, it has the same effect as ".".
-
-        examples:
-          - program: '.bar as $x | .foo | . + $x'
-            input: '{"foo":10, "bar":200}'
-            output: ['210']
-
-      # - title: Fold
-      #   body: |
-        
-      #     The `fold` syntax in jsq allows you to combine all of the
-      #     results of an expression by accumulating them into a single
-      #     answer. As an example, we'll pass `[3,2,1]` to this expression:
-
-      #     ```jsq
-      #     fold 0 as $sum (.[] | $sum + .)
-      #     ```
-          
-      #     The variable `$sum` is first given the value `0`. The body
-      #     of the fold (i.e. `.[] | $sum + .`) is evaluated. `.[]`
-      #     produces three results, `3`, `2`, and `1`. For the first
-      #     one, `$sum + .` gives `3`.
-
-      #     Having produced this answer, jsq backtracks to find the next
-      #     result as per usual. However, this time, `$sum` is set to
-      #     the previous value of the body, so `$sum + .` gives
-      #     `5`. After the final backtracking, `$sum + .` gives
-      #     `6`. This final value is used as the value of the entire
-      #     `fold` expression, so the above filter returns `6`.
-
-      #     More formally, in order to evaluate `fold INIT as $VAR
-      #     (BODY)`, jsq first sets `$VAR` to the value of `INIT`. It
-      #     then runs through `BODY`. Each time `BODY` produces a value,
-      #     `$VAR` is set to that value and jsq backtracks to find the
-      #     next one. When `BODY` stops producing values, the final
-      #     value of `$VAR` is the result of the entire expression.
-
-      #   examples:
-      #     - program: 'fold 0 as $sum (.[] | $sum + .)'
-      #       input: '[10,2,5,3]'
-      #       output: ['20']
-      
-
-  - title: Assignment
-    body: |
-
-      Assignment works a little differently in jsq than in most
-      programming languages. jsq doesn't distinguish between references
-      to and copies of something - two objects or arrays are either
-      equal or not equal, without any further notion of being "the
-      same object" or "not the same object".
-
-      If an object has two fields which are arrays, `.foo` and `.bar`,
-      and you append something to `.foo`, then `.bar` will not get
-      bigger. Even if you've just set `.bar = .foo`. If you're used to
-      programming in languages like Python, Java, Ruby, Javascript,
-      etc. then you can think of it as though jsq does a full deep copy
-      of every object before it does the assignment (for performance,
-      it doesn't actually do that, but that's the general idea).
-
-    entries:
-      - title: "`=`"
-        body: |
-          
-          The filter `.foo = 1` will take as input an object
-          and produce as output an object with the "foo" field set to
-          1. There is no notion of "modifying" or "changing" something
-          in jsq - all jsq values are immutable. For instance,
-          
-          ```jsq
-          .foo = .bar | .foo.baz = 1
-          ```
-          
-          will not have the side-effect of setting .bar.baz to be set
-          to 1, as the similar-looking program in Javascript, Python,
-          Ruby or other languages would. Unlike these languages (but
-          like Haskell and some other functional languages), there is
-          no notion of two arrays or objects being "the same array" or
-          "the same object". They can be equal, or not equal, but if
-          we change one of them in no circumstances will the other
-          change behind our backs.
-          
-          This means that it's impossible to build circular values in
-          jsq (such as an array whose first element is itself). This is
-          quite intentional, and ensures that anything a jsq program
-          can produce can be represented in JSON.
-
-      - title: "`|=`"
-        body: |
-          As well as the assignment operator '=', jsq provides the "update"
-          operator '|=', which takes a filter on the right-hand side and
-          works out the new value for the property being assigned to by running
-          the old value through this expression. For instance, .foo |= .+1 will
-          build an object with the "foo" field set to the input's "foo" plus 1.
-          
-          This example should show the difference between '=' and '|='. Provide input
-          
-          ```javascript
-          {"a": {"b": 10}, "b": 20}
-          ```
-          
-          to the programs `.a = .b` and `.a |= .b`
-          
-          The former will set the "a" field of the input to the "b" field of the
-          input, and produce the output {"a": 20}. The latter will set the "a"
-          field of the input to the "a" field's "b" field, producing {"a": 10}.
-
-      - title: "`+=`, `-=`, `*=`, `/=`"
-        body: |
-
-          jsq has a few operators of the form `a op= b`, which are all
-          equivalent to `a |= . op b`. So, `+= 1` can be used to increment values.
-
-        examples:
-          - program: .foo += 1
-            input: '{"foo": 42}'
-            output: ['{"foo": 43}']
-      
-      - title: Complex assignments
-        body: |
-          Lots more things are allowed on the left-hand side of a jsq assignment
-          than in most langauges. We've already seen simple field accesses on
-          the left hand side, and it's no surprise that array accesses work just
-          as well:
-          
-          ```jsq
-          .posts[0].title = "JSQ Manual"
-          ```
-          
-          What may come as a surprise is that the expression on the left may
-          produce multiple results, referring to different points in the input
-          document:
-          
-          ```jsq
-          .posts[].comments |= . + ["this is great"]
-          ```
-          
-          That example appends the string "this is great" to the "comments"
-          array of each post in the input (where the input is an object with a
-          field "posts" which is an array of posts).
-          
-          When jsq encounters an assignment like 'a = b', it records the "path"
-          taken to select a part of the input document while executing a. This
-          path is then used to find which part of the input to change while
-          executing the assignment. Any filter may be used on the
-          left-hand side of an equals - whichever paths it selects from the
-          input will be where the assignment is performed.
-          
-          This is a very powerful operation. Suppose we wanted to add a comment
-          to blog posts, using the same "blog" input above. This time, we only
-          want to comment on the posts written by "tjoekbezoer". We can find those
-          posts using the "select" function described earlier:
-          
-          ```jsq
-          .posts[] | select(.author == "tjoekbezoer")
-          ```
-          
-          The paths provided by this operation point to each of the posts that
-          "tjoekbezoer" wrote, and we can comment on each of them in the same way
-          that we did before:
-          
-          ```jsq
-          (.posts[] | select(.author == "tjoekbezoer") | .comments) |= . + ["terrible."]
-          ```
   
   - title: Acknowledgements & thanks
     body: |
