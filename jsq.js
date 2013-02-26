@@ -1185,7 +1185,7 @@
 	jsq['Lexer'] = Lexer;
 	jsq['Parser'] = Parser;
 	
-	// Modules
+	// Standard functions
 	jsq['fn'] = {
 		'add': function( input, output ) {
 			var ret, undefined;
@@ -1268,7 +1268,7 @@
 					output.push(input[i]);
 					var exp = _expression([input[i]], [], argument);
 					if( exp.length )
-						this.recurse(exp, output, argument, level);
+						this['recurse'](exp, output, argument, level);
 				}
 			}
 		},
