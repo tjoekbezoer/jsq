@@ -17,6 +17,6 @@ var i = {
   }
 };
 
-jsq(i, '.users as $u | .data[] | {$u[.uid].name: max(.grades)}');
+jsq(i, '.users as $u | .data[] | {$u[.uid].name: (.grades|max)}');
 // » [{"Bruce Willis":8}, {"Samuel L. Jackson":9}]
 ```
