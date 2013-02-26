@@ -47,6 +47,8 @@
 		deepEqual(jsq(input, query), result, title);
 	}
 	
+	
+	
 	module('Interpreter');
 	test('executes unary operations correctly', function() {
 		eq('-1, ~1, !1, -2', [-1,-2,false,-2]);
@@ -283,5 +285,76 @@
 			},
 			'third': null
 		}], 'Assigning to an unknown key creates it and sets it to null');
+	});
+	
+	
+	module('Standard functions');
+	test('add', function() {
+		eq('[1,2,3] | add', [6]);
+	});
+	
+	test('if', function() {
+		eq({foo:'bar'}, 'if(.foo=="bar", 1, 0)', [1]);
+	});
+	
+	test('empty', function() {
+		eq('1,2,empty,4', [1,2,4]);
+	});
+	
+	test('format', function() {
+		eq('[1,2] | format("first:%0, second:%1")', ["first:1, second:2"]);
+	});
+	
+	test('keys', function() {
+		eq(simple, 'keys', ['first','second','third','fourth']);
+	});
+	
+	test('length', function() {
+		eq(complex, '(.fourth | length), (.fifth | length)', [8,3]);
+	});
+	
+	test('map', function() {
+		eq(complex, '.fourth | map(.+1)', [2,3,4,5,6,7,8,9]);
+		eq(complex, '.fifth.sub | map(.+1)', [2,3]);
+	});
+	
+	test('max', function() {
+		eq(multiple, '.[0] | max', [3]);
+		eq(multiple, 'max(.first)', [{first:4, second:5}]);
+	});
+	
+	test('min', function() {
+		eq(multiple, '.[0] | min', [1]);
+		eq(multiple, 'min(.first)', [{first:1, second:2, third: 3}]);
+	});
+	
+	test('pairs', function() {
+		eq(multiple, '.[1] | pairs', [['first',4], ['second',5]]);
+	});
+	
+	test('recurse', function() {
+		var recursive = {
+			"name": "1", "children": [
+				{"name": "1-1", "children": [
+					{"name": "1-1-1", "children": []},
+					{"name": "1-1-2", "children": []}
+				]},
+				{"name": "1-2"}
+			]
+		};
+		
+		eq(recursive, 'recurse(.children[]) | .name', ['1','1-1','1-1-1','1-1-2','1-2']);
+	});
+	
+	test('select', function() {
+		eq(simple, '.[] | select(.>=3)', [3,4]);
+	});
+	
+	test('tonumber', function() {
+		eq('"1", "1foo", "foo1" | tonumber', [1,1,null]);
+	});
+	
+	test('tostring', function() {
+		eq('false, 1, [1,2,3] | tostring', ['false', '1', '[1,2,3]']);
 	});
 })();
