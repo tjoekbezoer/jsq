@@ -13,7 +13,8 @@
 </h1>
 		
 		<p>Take control of your JSON; slice, filter, map, transform,
-calculate — it&#39;s up to you. All in a purpose-designed, simple language.</p>
+calculate — it&#39;s up to you. All in a purpose-designed, simple language. With GZIP, it&#39;s less
+than 5KB.</p>
 
 		
 		<div id="header">
@@ -28,7 +29,7 @@ calculate — it&#39;s up to you. All in a purpose-designed, simple language.</p
   }
 };
 
-jsq(i, '.users as $u | .data[] | {$u[.uid].name: max(.grades)}');
+jsq(i, '.users as $u | .data[] | {$u[.uid].name: (.grades|max)}');
 // » [{"Bruce Willis":8}, {"Samuel L. Jackson":9}]</pre></code>
 			
 			
@@ -44,7 +45,6 @@ jsq(i, '.users as $u | .data[] | {$u[.uid].name: max(.grades)}');
 <li>Download <a href="//raw.github.com/tjoekbezoer/jsq/master/jsq.js"><strong>jsq v0.1.0</strong></a> — not yet production ready!</li>
 <li>Take jsq for a spin using my <a href="//tjoekbezoer.github.com/jsq/parser.html"><strong>internal test tool</strong></a></li>
 <li>Run the <a href="//tjoekbezoer.github.com/jsq/test">test suite</a></li>
-<li>Check out the <a href="//www.github.com/tjoekbezoer/jsq">project on GitHub</a></li>
 </ul>
 
 			
@@ -76,7 +76,7 @@ filter as <code>add / length</code> — feeding the input array both to the <cod
 filter and the <code>length</code> filter and dividing the results.</p>
 <h2>Calling jsq</h2>
 <p>The jsq function is defined as follows:</p>
-<pre><code class="lang-javascript">var output = jsq( input..., query, iterator(value, key, output)?, context  ? )</code></pre>
+<pre><code class="lang-javascript">var output = jsq( input..., query, iterator(value, key, output)?, context? )</code></pre>
 <p>An arbitrary number of <code>input</code> objects can be passed (not required) after which a <code>query</code>
 string is expected. Finally an optional <code>iterator</code> function and calling <code>context</code> can be
 defined. Jsq always returns a results array, even when there&#39;s only a single or no results.</p>
@@ -297,8 +297,7 @@ from the first object.</li>
 			<div>
 				<h3><p>Binary — <code>and</code>, <code>or</code> and <code>xor</code></p>
 </h3>
-				<p>These operators are similar to JavaScript&#39;s <code>&amp;</code>, <code>|</code> and <code>^</code>. So for example <code>1 or 2</code>
-produces <code>3</code>, and <code>1 xor 5</code> produces <code>4</code>.</p>
+				<p>These operators are similar to JavaScript&#39;s <code>&amp;</code>, <code>|</code> and <code>^</code>.</p>
 
 			</div>
 			
@@ -317,11 +316,9 @@ of your own.</p>
 				<h3><p><code>length</code></p>
 </h3>
 				<p>The builtin function <code>length</code> gets the length of various
-different types of value:</p>
+different types of values:</p>
 <ul>
-<li><p>The length of a <strong>string</strong> is the number of Unicode
-codepoints it contains (which will be the same as its
-JSON-encoded length in bytes if it&#39;s pure ASCII).</p>
+<li><p>The length of a <strong>string</strong> is obviously the number of characters.</p>
 </li>
 <li><p>The length of an <strong>array</strong> is the number of elements.</p>
 </li>
@@ -330,6 +327,7 @@ JSON-encoded length in bytes if it&#39;s pure ASCII).</p>
 <li><p>The length of <strong>null</strong> is zero.</p>
 </li>
 </ul>
+<p>When trying to get the length of a number, it will return nothing.</p>
 
 			</div>
 			<div>
@@ -391,17 +389,17 @@ as those for the <code>+</code> operator (described above).</p>
 			<div>
 				<h3><p><code>tonumber</code></p>
 </h3>
-				<p>The <code>tonumber</code> function will parse its input as a number, or return <code>0</code> when it&#39;s not
-able to produce a number.</p>
+				<p>The <code>tonumber</code> function will parse its input as a number. It&#39;s not able to parse objects
+and arrays, nor can it parse strings not starting with a number. In these cases, <code>tonumber</code>
+will return <code>null</code>. Parsing  booleans results in <code>1</code> or <code>0</code>.</p>
 
 			</div>
 			<div>
 				<h3><p><code>tostring</code></p>
 </h3>
-				<p>The <code>tostring</code> function prints its input as a string. Strings are left unchanged, and all
-other values are JSON-encoded. Jsq uses <code>JSON.stringify</code> for this, so make sure it is
-available (it is in modern browsers, but for older browser you might need to include 
-<a href="https://github.com/douglascrockford/JSON-js">json.js</a>)</p>
+				<p>The <code>tostring</code> function prints its input as a string. Jsq uses <code>JSON.stringify</code> for this,
+so make sure it is available (it is in modern browsers, but for older browser you might
+need to include <a href="https://github.com/douglascrockford/JSON-js">json2.js</a>)</p>
 
 			</div>
 			<div>
@@ -454,7 +452,7 @@ into a custom string.</p>
 			<div>
 				<h3><p><code>==</code>, <code>===</code>, <code>!=</code></p>
 </h3>
-				<p>The expression &#39;a == b&#39; will produce &#39;true&#39; if the result of a and b
+				<p><strong>UNDONE</strong><br>The expression &#39;a == b&#39; will produce &#39;true&#39; if the result of a and b
 are equal (that is, if they represent equivalent JSON documents) and
 &#39;false&#39; otherwise. In particular, strings are never considered equal
 to numbers. If you&#39;re coming from Javascript, jsq&#39;s == is like
@@ -466,17 +464,15 @@ same type as well as the same value.</p>
 			<div>
 				<h3><p><code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code></p>
 </h3>
-				<p>The comparison operators <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code> return whether
-their left argument is greater than, greater than or equal
-to, less than or equal to or less than their right argument
-(respectively).</p>
+				<p><strong>UNDONE</strong><br>The comparison operators <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code> behave as expected. Additionaly, it can be
+used to compare arrays and objects.</p>
 <p>The ordering is the same as that described for <code>sort</code>, above.</p>
 
 			</div>
 			<div>
-				<h3><p>if(cond, then[, else])</p>
+				<h3><p><code>if(cond, then[, else])</code></p>
 </h3>
-				<p><code>if(A, B, C)</code> will execute <code>B</code> if <code>A</code> evaluates as truthy, otherwise it will optionally
+				<p><strong>UNDONE</strong><br><code>if(A, B, C)</code> will execute <code>B</code> if <code>A</code> evaluates as truthy, otherwise it will optionally
 execute <code>C</code>.</p>
 <p>Checking for false or null is a simpler notion of
 &quot;truthiness&quot; than is found in Javascript or Python, but it
@@ -488,27 +484,19 @@ B end</code> instead.</p>
 <p>If the condition A produces multiple results, it is
 considered &quot;true&quot; if any of those results is not false or
 null. If it produces zero results, it&#39;s considered false.</p>
-<p>More cases can be added to an if using <code>elif A then B</code> syntax.</p>
 
 			</div>
 			<div>
-				<h3><p><code>&amp;&amp;</code>, <code>||</code></p>
+				<h3><p><code>&amp;&amp;</code>, <code>||</code>, <code>!</code></p>
 </h3>
-				<p>jsq supports the normal Boolean operators and/or/not. They have the
-same standard of truth as if expressions - false and null are
+				<p>jsq supports the normal Boolean operators <code>&amp;&amp;</code> and <code>||</code>. They have the
+same standard of truth as <code>if</code> expressions - <code>false</code> and <code>null</code> are
 considered &quot;false values&quot;, and anything else is a &quot;true value&quot;.</p>
 <p>If an operand of one of these operators produces multiple
 results, the operator itself will produce a result for each input.</p>
-<p><code>not</code> is in fact a builtin function rather than an operator,
-so it is called as a filter to which things can be piped
-rather than with special syntax, as in <code>.foo and .bar |
-not</code>.</p>
-<p>These three only produce the values &quot;true&quot; and &quot;false&quot;, and
-so are only useful for genuine Boolean operations, rather
-than the common Perl/Python/Ruby idiom of
-&quot;value_that_may_be_null or default&quot;. If you want to use this
-form of &quot;or&quot;, picking between two values rather than
-evaluating a condition, see the &quot;//&quot; operator below.</p>
+<p>The boolean operators behave the same as JavaScript&#39;s, returning the value of the last
+correct operand. So for example <code>0 &amp;&amp; 2</code> returns <code>2</code>; <code>!1 || 3</code> returns <code>3</code>.</p>
+<p><code>!</code> simply negates the proceding value.</p>
 
 			</div>
 			

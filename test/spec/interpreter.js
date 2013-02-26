@@ -68,6 +68,14 @@
 		eq('1+4/2+1', [4]);
 		eq('(2+4)/3+1', [3]);
 		eq('((2+4)*2+3)*2', [30]);
+		// Mixed values (array+array, array-array, etc).
+		eq(multiple, '.[0]+.[1]', [{first:4, second:5, third:3}], 'Adding objects');
+		eq(multiple, '.[0]-.[1]', [{third:3}], 'Subtracting objects');
+		eq(multiple, '.[0] as $obj | .[0]-.[1]', [{first:1, second:2, third:3}], 'Arithmetic on objects is by value');
+		eq('[1,2]+[3,4]', [[1,2,3,4]], 'Adding arrays');
+		eq('[1,2,3,3,4] - [2,3]', [[1,4]], 'Subtracting arrays');
+		eq('[1,2]+3', [[1,2,3]], 'Adding scalar to array');
+		eq('[1,2,3,3,4]-3', [[1,2,4]], 'Subtracting scalar from array');
 		
 		// Logical
 		eq('1&&2, 2&&1, 1 && 2, 1	&&	2', [2,1,2,2]);
@@ -75,22 +83,23 @@
 		eq('1||2, 2||1, 1||0', [1,2,1]);
 		eq('1==1, 2!=1, 2>1, 2>=1, 1>=1, 1<2, 1<=2, 1<=1', [true,true,true,true,true,true,true,true]);
 		eq('2==1, 1!=1, 1>2, 1>=2, 2<1, 2<=1', [false,false,false,false,false,false]);
+		eq('"1"==1, "1"===1', [true,false]);
 		// Precedence
 		eq('1||2&&3', [1]);
 		eq('(1||2)&&3', [3]);
 		eq('0||2&&3', [3]);
 		
 		// Bitwise
-		eq('1\\2', [3]);
-		eq('3&7', [3]);
-		eq('1^2, 1^3', [3,2]);
+		eq('1or2', [3]);
+		eq('3and7', [3]);
+		eq('1xor2, 1xor3', [3,2]);
 		// Precedence
-		eq('2\\5&4, (2\\5)&4', [6,4]);
-		eq('2&6\\8, 2&(6\\8)', [10,2]);
-		eq('7^5&4, (7^5)&4', [3,0]);
-		eq('6&4^8, 6&(4^8)', [12,4]);
-		eq('7^5\\4, 7^(5\\4)', [6,2]);
-		eq('6\\5^4, (6\\5)^4', [7,3]);
+		eq('2or5and4, (2or5)and4', [6,4]);
+		eq('2and6or8, 2and(6or8)', [10,2]);
+		eq('7xor5and4, (7xor5)and4', [3,0]);
+		eq('6and4xor8, 6and(4xor8)', [12,4]);
+		eq('7xor5or4, 7xor(5or4)', [6,2]);
+		eq('6or5xor4, (6or5)xor4', [7,3]);
 	});
 
 	test('executes filters correctly', function() {
@@ -135,7 +144,7 @@
 		eq('[1,2,3] | .[]', [1,2,3]);
 		eq([1,2,3,4,5,6], '.[1,2,3]', [2,3,4]);
 		
-		eq('1,1\\2,2+1,4', [1,3,3,4]);
+		eq('1,1or2,2+1,4', [1,3,3,4]);
 	});
 	
 	test('executes collections correctly', function() {

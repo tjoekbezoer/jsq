@@ -4,7 +4,7 @@ test('runs with all argument combinations', function() {
 	
 	// Return value
 	deepEqual(jsq([1,2], '.[]'), [1,2], 'Return value with input');
-	deepEqual(jsq([1,2], [3,4], '.[]'), [1,2,3,4], 'Return value with multiple inputs');
+	deepEqual(jsq([1,2], [3,4], 'add, keys'), [3,0,1,7,0,1], 'Return value with multiple inputs');
 	deepEqual(jsq('1,2'), [1,2], 'Return value without input');
 	
 	// Calling jsq with empty query
@@ -18,6 +18,9 @@ test('runs with all argument combinations', function() {
 	
 	jsq('1,2', function( i ) {test += i});
 	equal(test, 6, 'Using iterator without input');
+	
+	jsq('1,2', function( i ) {test += i; return false});
+	equal(test, 7, 'Short-circuit iterator by returning false');
 	
 	// Callback with context
 	test = {foo: 0};
