@@ -1,4 +1,6 @@
 
+/** @define {boolean} */
+var DEV = true;
 
 ;(function( window ) {
 	// Extend target object with the properties from the given source objects.
@@ -101,7 +103,7 @@
 	// Replaces %# in a string with the (#+1)th argument.
 	function _sprintf( str /* ,replacement... */ ) {
 		var args = Array.prototype.slice.call(arguments, 1);
-		return typeof str == _b.STRING && str.replace(/%(\d+)/g, function(match, i) { 
+		return typeof str == 'string' && str.replace(/%(\d+)/g, function(match, i) { 
 			return args[i] || '';
 		});
 	};
@@ -158,31 +160,31 @@
 	};
 	
 	var _b = {
-		ARGUMENT: "argument",
-		ASSIGNMENT: "assignment",
-		BINARY: "binary",
-		BOOL: "bool",
-		COLLECT: "collect",
-		ELEMENT: "element",
-		FILTER: "filter",
-		FUNCTION_CALL: "function_call",
-		KEY: "key",
-		KEY_ALL: "key_all",
-		LIST: "list",
-		NAME: "name",
-		NIL: "null",
-		NUMBER: "number",
-		OBJECT: "object",
-		OPERATOR: "operator",
-		PARENS: "parens",
-		PIPE: "pipe",
-		PROGRAM: "program",
-		STRING: "string",
-		TARGET: "target",
-		UNARY: "unary",
-		UNDEFINED: "undefined",
-		VALUE: "value",
-		VARIABLE: "variable"
+		ARGUMENT:				DEV && "argument" || 1,
+		ASSIGNMENT:			DEV && "assignment" || 2,
+		BINARY:					DEV && "binary" || 3,
+		BOOL:						DEV && "bool" || 4,
+		COLLECT:				DEV && "collect" || 5,
+		ELEMENT:				DEV && "element" || 6,
+		FILTER:					DEV && "filter" || 7,
+		FUNCTION_CALL:	DEV && "function_call" || 8,
+		KEY:						DEV && "key" || 9,
+		KEY_ALL:				DEV && "key_all" || 10,
+		LIST:						DEV && "list" || 11,
+		NAME:						DEV && "name" || 12,
+		NIL:						DEV && "null" || 13,
+		NUMBER:					DEV && "number" || 14,
+		OBJECT:					DEV && "object" || 15,
+		OPERATOR:				DEV && "operator" || 16,
+		PARENS:					DEV && "parens" || 17,
+		PIPE:						DEV && "pipe" || 18,
+		PROGRAM:				DEV && "program" || 19,
+		STRING:					DEV && "string" || 20,
+		TARGET:					DEV && "target" || 21,
+		UNARY:					DEV && "unary" || 22,
+		UNDEFINED:			DEV && "undefined" || 23,
+		VALUE:					DEV && "value" || 24,
+		VARIABLE:				DEV && "variable" || 25
 	};
 	
 	// Error messages.
@@ -220,7 +222,7 @@
 			tokens.push({
 				type: i,
 				index: _regex.lastIndex,
-				data: token[0]
+				val: token[0]
 			});
 			
 			lastIndex = _regex.lastIndex;
@@ -319,7 +321,7 @@
 					this.parse_assignment(token);
 					break;
 				case _t.bln:
-					this.addup(_b.BOOL).value = token.data;
+					this.addup(_b.BOOL).val = token.val;
 					break;
 				case _t.nil:
 					this.addup(_b.NIL);
@@ -342,7 +344,7 @@
 					this.tokens.next();
 					continue;
 				default:
-					switch( token.data ) {
+					switch( token.val ) {
 						case '.':
 							this.parse_filter();
 							break;
@@ -362,7 +364,7 @@
 							this.parse_pipe();
 							break;
 						default:
-							_error(_e.UNRECOGNIZED_TOKEN, token.data, token.index);
+							_error(_e.UNRECOGNIZED_TOKEN, token.val, token.index);
 					}
 			}
 			// If this is a subroutine of parse(), break out when
@@ -391,10 +393,10 @@
 		}
 		
 		this.wrap(_b.ASSIGNMENT);
-		switch( opToken.data ) {
+		switch( opToken.val ) {
 			case 'as':
 				if( token && token.type == _t.vrb )
-					this.addup(_b.NAME).value = token.data;
+					this.addup(_b.NAME).val = token.val;
 				break;
 			case '=':
 			case '|=':
@@ -403,18 +405,18 @@
 			case '*=':
 			case '/=':
 				if( this.current.last.name != _b.FILTER )
-					_error(_e.UNEXPECTED_TOKEN, opToken.data, opToken.index);
-				if( opToken.data != '=' && opToken.data != '|=' ) {
+					_error(_e.UNEXPECTED_TOKEN, opToken.val, opToken.index);
+				if( opToken.val != '=' && opToken.val != '|=' ) {
 					// Shorthand op for x |= . op filter
-					this.addup(_b.OPERATOR).value = '|='
+					this.addup(_b.OPERATOR).val = '|='
 					this.add(_b.BINARY);
 					this.addup(_b.FILTER);
-					this.addup(_b.OPERATOR).value = opToken.data.substr(0,1);
+					this.addup(_b.OPERATOR).val = opToken.val.substr(0,1);
 					this.parse();
 					this.up();
 				} else {
 					// = or |=
-					this.addup(_b.OPERATOR).value = opToken.data;
+					this.addup(_b.OPERATOR).val = opToken.val;
 					this.parse();
 				}
 				break;
@@ -442,23 +444,23 @@
 				(prev = lhs.children[1]) && (
 					// Logical precedence
 					(
-						token.data == '&&' &&
-						prev.value == '||'
+						token.val == '&&' &&
+						prev.val == '||'
 					) || (
 						token.type == _t.op_cmp &&
-						token.data != '&&' &&
-						token.data != '||'
+						token.val != '&&' &&
+						token.val != '||'
 					) || (
 						prev.type == _t.op_cmp &&
 						token.type == _t.op_arm
 					) || (
 					// Arithmetic precedence
-						(token.data == '*' || token.data == '/') &&
-						(prev.value == '+' || prev.value == '-')
+						(token.val == '*' || token.val == '/') &&
+						(prev.val == '+' || prev.val == '-')
 					) ||
 					// Bitwise precedence
-					token.data == 'and' && (prev.value == 'xor' || prev.value == 'or') ||
-					token.data == 'xor' && prev.value == 'or'
+					token.val == 'and' && (prev.val == 'xor' || prev.val == 'or') ||
+					token.val == 'xor' && prev.val == 'or'
 				)
 			)
 		) {
@@ -470,11 +472,11 @@
 			return;
 		} else {
 			// See if the - operator should be parsed as a unary instead.
-			if( token.data == '-' && (
+			if( token.val == '-' && (
 					!lhs ||
 					lhs.name == _b.OPERATOR ||
 					// to parse things like 1,-1 and 1,2--1 correctly
-					lhs.parent.name == _b.LIST && this.tokens.back().data == ',' ||
+					lhs.parent.name == _b.LIST && this.tokens.back().val == ',' ||
 					lhs.parent.name == _b.PIPE
 				)
 			) {
@@ -483,7 +485,7 @@
 			} else if( lhs ) {
 				this.wrap(_b.BINARY);
 				op = this.addup(_b.OPERATOR);
-				op.value = token.data;
+				op.val = token.val;
 				op.type = token.type;
 				
 				this.tokens.skip(true);
@@ -494,7 +496,7 @@
 		}
 		
 		var cur = this.tokens.current();
-		_error(_e.UNEXPECTED_TOKEN, cur.data, cur.index);
+		_error(_e.UNEXPECTED_TOKEN, cur.val, cur.index);
 	};
 	// 
 	Parser.prototype.parse_collection = function() {
@@ -503,7 +505,7 @@
 		this.add(_b.COLLECT);
 		while(
 			(token = this.tokens.peek(true)) &&
-			token.data != ']'
+			token.val != ']'
 		) {
 			this.tokens.skip(true);
 			this.parse();
@@ -527,7 +529,7 @@
 		
 		if( wrap ) {
 			if( (peek = this.tokens.peek(true)) && 
-					(peek.data == '.' || peek.data == '[')
+					(peek.val == '.' || peek.val == '[')
 			) {
 				// This is a filter on an expression, so wrap that expression as this
 				// filter's target.
@@ -539,14 +541,14 @@
 			}
 		} else {
 			this.add(_b.FILTER);
-			this.addup(_b.TARGET).value = '.';
+			this.addup(_b.TARGET).val = '.';
 		}
 		
 		while( peek = this.tokens.peek() ) {
-			if( peek.data == '[' ) {
+			if( peek.val == '[' ) {
 				all = true;
 				this.tokens.next();
-				while( (peek = this.tokens.peek(true)) && peek.data != ']' ) {
+				while( (peek = this.tokens.peek(true)) && peek.val != ']' ) {
 					this.tokens.skip(true);
 					this.parse();
 					all = false;
@@ -557,10 +559,10 @@
 					all = false;
 				}
 				
-				if( !(token = this.tokens.skip(true)) || token.data != ']' )
-					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.data, token && token.index);
+				if( !(token = this.tokens.skip(true)) || token.val != ']' )
+					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.val, token && token.index);
 			} else if(
-				(this.current.last.name == _b.TARGET && peek.data != '.' || peek.data == '.' && this.tokens.next()) &&
+				(this.current.last.name == _b.TARGET && peek.val != '.' || peek.val == '.' && this.tokens.next()) &&
 				(peek = this.tokens.peek()) && (
 					peek.type == _t.id ||
 					peek.type == _t.itg
@@ -569,9 +571,9 @@
 				// Shorthand form
 				token = this.tokens.next();
 				if( token.type == _t.id ) {
-					this.addup(_b.STRING).value = token.data;
+					this.addup(_b.STRING).val = token.val;
 				} else {
-					this.addup(_b.NUMBER).value = parseFloat(token.data);
+					this.addup(_b.NUMBER).val = parseFloat(token.val);
 				}
 			} else {
 				break;
@@ -590,20 +592,20 @@
 	Parser.prototype.parse_function = function() {
 		var peek, token;
 		
-		this.add(_b.FUNCTION_CALL).value = this.tokens.current().data;
+		this.add(_b.FUNCTION_CALL).val = this.tokens.current().val;
 		
-		if( (peek = this.tokens.peek(true)) && peek.data == '(' ) {
+		if( (peek = this.tokens.peek(true)) && peek.val == '(' ) {
 			this.tokens.skip(true);
 			
-			if( (peek = this.tokens.peek(true)) && peek.data != ')' ) {
+			if( (peek = this.tokens.peek(true)) && peek.val != ')' ) {
 				this.add(_b.ARGUMENT);
-				while( (token = this.tokens.skip(true)) && token.data != ')' ) {
+				while( (token = this.tokens.skip(true)) && token.val != ')' ) {
 					this.parse();
 				}
 				this.up();
 				
-				if( !(token = this.tokens.current()) || token.data != ')' )
-					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.data, token && token.index);
+				if( !(token = this.tokens.current()) || token.val != ')' )
+					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.val, token && token.index);
 			} else {
 				this.tokens.skip(true);
 			}
@@ -635,11 +637,11 @@
 		while(
 			(peek = this.tokens.peek(true)) && (
 				peek.type != _t.ctl ||
-				peek.data != ',' &&
-				peek.data != ')' &&
-				peek.data != ']' &&
-				peek.data != '}' &&
-				peek.data != '|'
+				peek.val != ',' &&
+				peek.val != ')' &&
+				peek.val != ']' &&
+				peek.val != '}' &&
+				peek.val != '|'
 			)
 		) {
 			this.tokens.skip(true);
@@ -652,9 +654,9 @@
 	Parser.prototype.parse_literal = function() {
 		var token = this.tokens.current();
 		if( token.type == _t.str ) {
-			this.addup(_b.STRING).value = token.data;
+			this.addup(_b.STRING).val = token.val;
 		} else {
-			this.addup(_b.NUMBER).value = parseFloat(token.data);
+			this.addup(_b.NUMBER).val = parseFloat(token.val);
 		}
 	};
 	// Parse object definitions
@@ -663,7 +665,7 @@
 			token, peek, key, value;
 		
 		this.add(_b.OBJECT);
-		while( (token = this.tokens.skip(true)) && token.data != '}' ) {
+		while( (token = this.tokens.skip(true)) && token.val != '}' ) {
 			key_switch:
 			switch( token.type ) {
 				// A key can only be a specific group of tokens
@@ -672,22 +674,22 @@
 				case _t.id:
 				case _t.itg:
 				case _t.str:
-					if( token.type == _t.ctl && token.data == ',' ) {
+					if( token.type == _t.ctl && token.val == ',' ) {
 						// Comma found. Look for another element, or throw when there is none
 						// or this is a double comma.
 						if( !this.current.children.length ) {
 							_error(_e.UNEXPECTED_TOKEN, ',', token.index);
 						} else if(
 							(peek = this.tokens.peek(true)) &&
-							peek.type == _t.ctl && (peek.data == ',' || peek.data == '}')
+							peek.type == _t.ctl && (peek.val == ',' || peek.val == '}')
 						) {
-							_error(_e.UNEXPECTED_TOKEN, peek.data, peek.index);
+							_error(_e.UNEXPECTED_TOKEN, peek.val, peek.index);
 						} else if( !peek ) {
 							_error(_e.EOF);
 						} else {
 							continue;
 						}
-					} else if( token.type != _t.ctl || token.data == '.' || token.data == '(' ) {
+					} else if( token.type != _t.ctl || token.val == '.' || token.val == '(' ) {
 						// Element is found. The key can be a literal, a filter, or a complex
 						// expression in parenthesis that returns one result
 						this.add(_b.ELEMENT);
@@ -695,7 +697,7 @@
 							case _t.itg:
 							case _t.str:
 							case _t.id:
-								this.addup(_b.KEY).value = token.data;
+								this.addup(_b.KEY).val = token.val;
 								break;
 							default:
 								this.add(_b.KEY);
@@ -703,7 +705,7 @@
 								this.up();
 						}
 						
-						if( (peek = this.tokens.peek(true)) && peek.data == ':' ) {
+						if( (peek = this.tokens.peek(true)) && peek.val == ':' ) {
 							// First skip the colon
 							this.tokens.skip(true);
 							token = this.tokens.skip(true);
@@ -721,32 +723,32 @@
 									this.add(_b.VALUE);
 									if(
 										// When token is arithmetic, only '-'' is allowed (as a unary)
-										token.type == _t.op_arm && token.data != '-' ||
+										token.type == _t.op_arm && token.val != '-' ||
 										// Throw when another ',' or ':' token is found
 										token.type != _t.ctl ||
-										token.data == '.' || token.data == '[' || token.data == '(' || token.data == '{'
+										token.val == '.' || token.val == '[' || token.val == '(' || token.val == '{'
 									) {
 										this.parse();
 									} else {
-										_error(_e.UNEXPECTED_TOKEN, token.data, token.index);
+										_error(_e.UNEXPECTED_TOKEN, token.val, token.index);
 									}
 									// Also up out of _b.ELEMENT
 									this.up(2);
 									break key_switch;
 							}
-						} else if( token.type != _t.ctl && peek && (peek.data == ',' || peek.data == '}') ) {
+						} else if( token.type != _t.ctl && peek && (peek.val == ',' || peek.val == '}') ) {
 							// Shortcut filter
 							this.add(_b.VALUE);
 							this.add(_b.FILTER);
-							this.addup(_b.TARGET).value = '.';
-							this.addup(_b.STRING).value = token.data;
+							this.addup(_b.TARGET).val = '.';
+							this.addup(_b.STRING).val = token.val;
 							// Also up out of _b.ELEMENT
 							this.up(3);
 							break;
 						}
 					}
 				default:
-					_error(_e.UNEXPECTED_TOKEN, (peek?peek:token).data, (peek?peek:token).index);
+					_error(_e.UNEXPECTED_TOKEN, (peek?peek:token).val, (peek?peek:token).index);
 			}
 		}
 		this.up();
@@ -754,7 +756,7 @@
 	Parser.prototype.parse_parens = function() {
 		var token;
 		this.add(_b.PARENS);
-		while( (token = this.tokens.skip(true)) && token.data != ')' )
+		while( (token = this.tokens.skip(true)) && token.val != ')' )
 			this.parse();
 		this.up();
 		// Check if these parentheses has a filter attached.
@@ -771,14 +773,14 @@
 		var token = this.tokens.current();
 		if( !this.tokens.skip(true) )
 			_error(_e.EOF);
-		this.add(_b.UNARY).value = token.data;
+		this.add(_b.UNARY).val = token.val;
 		this.parse();
 		this.up();
 	};
 	Parser.prototype.parse_variable = function() {
 		var current = this.add(_b.VARIABLE),
 				peek;
-		current.value = this.tokens.current().data;
+		current.val = this.tokens.current().val;
 		
 		this.up();
 		// Check if this variable has a filter attached.
@@ -836,14 +838,14 @@
 	
 	// Runtime
 	function _binary( input, output, branch, undefined ) {
-		var op = branch.children[1].value,
+		var op = branch.children[1].val,
 			lhv = branch.children[0],
 			rhv = branch.children[2];
 		var l = lhv.name == _b.NUMBER ?
-			[lhv.value] :
+			[lhv.val] :
 			_expression(input, [], lhv);
 		var r = rhv.name == _b.NUMBER ?
-			[rhv.value] :
+			[rhv.val] :
 			_expression(input, [], rhv);
 		var i, j, ret, key;
 		
@@ -919,7 +921,7 @@
 				_binary(input, output, branch);
 				break;
 			case _b.BOOL:
-				output.push(branch.value=='true'?true:false);
+				output.push(branch.val=='true'?true:false);
 				break;
 			case _b.COLLECT:
 				col = [];
@@ -941,7 +943,7 @@
 				break;
 			case _b.NUMBER:
 			case _b.STRING:
-				output.push(branch.value);
+				output.push(branch.val);
 				break;
 			case _b.OBJECT:
 				_object(input, output, branch.children);
@@ -971,14 +973,14 @@
 	function _assignment( input, output, children ) {
 		if( children.length == 2 ) {
 			// Value assignment to variable
-			_vars[children[1].value] = _expression(input, [], children[0]);
+			_vars[children[1].val] = _expression(input, [], children[0]);
 			if( input instanceof Array )
 				output.push.apply(output, input);
 			else
 				output.push(input);
 		} else if( children.length == 3 ) {
 			// Value assignment to filter.
-			var op = children[1].value,
+			var op = children[1].val,
 					inputCopy = _copy(input),
 					exp;
 			
@@ -1023,7 +1025,7 @@
 		// Root call
 		if( all === input ) {
 			target = filter.shift();
-			if( !target.value && target.children.length ) {
+			if( !target.val && target.children.length ) {
 				input = _expression(input, [], target.children[0]);
 			}
 		}
@@ -1051,9 +1053,9 @@
 			) {
 				// Single element
 				if( !filter.length )
-					callback(element[child.value], child.value, element);
+					callback(element[child.val], child.val, element);
 				else
-					_filter(all, [element[child.value]], output, filter, callback);
+					_filter(all, [element[child.val]], output, filter, callback);
 			} else {
 				// Every other case: sub-expression
 				sub = _expression(all, [], child);
@@ -1067,8 +1069,8 @@
 		}
 	}
 	function _function( input, output, branch ) {
-		if( branch.value && typeof jsq['fn'][branch.value] == 'function' ) {
-			jsq['fn'][branch.value](input[0], output, branch.children[0] && branch.children[0].children[0]);
+		if( branch.val && typeof jsq['fn'][branch.val] == 'function' ) {
+			jsq['fn'][branch.val](input[0], output, branch.children[0] && branch.children[0].children[0]);
 		}
 	}
 	// Creating an object is a complex one. When defining an object in JSQ, multiple actual objects
@@ -1101,7 +1103,7 @@
 				else
 					_error('Key definition with multiple or no values');
 			} else {
-				key = el[0].value;
+				key = el[0].val;
 			}
 			
 			// Value
@@ -1119,10 +1121,10 @@
 		}
 	}
 	function _variable( input, output, branch ) {
-		output.push.apply(output, _vars[branch.value]);
+		output.push.apply(output, _vars[branch.val]);
 	}
 	function _unary( input, output, branch ) {
-		var op = branch.value,
+		var op = branch.val,
 				exp = _expression(input, [], branch.children[0]),
 				i;
 		for( i=0; i<exp.length; i++ ) {
@@ -1150,9 +1152,9 @@
 			, query, callback, ctx;
 		
 		// All arguments preceding the query are input values
-		while( (arg = args.shift()) && typeof arg != _b.STRING )
+		while( (arg = args.shift()) && typeof arg != 'string' )
 			input.push(arg);
-		if( typeof arg != _b.STRING ) return [];
+		if( typeof arg != 'string' ) return [];
 		query = arg;
 		if( callback = args.shift() )
 			ctx = args.shift() || this;
@@ -1182,8 +1184,10 @@
 			return [];
 		}
 	};
-	jsq['Lexer'] = Lexer;
-	jsq['Parser'] = Parser;
+	if( DEV ) {
+		jsq['Lexer'] = Lexer;
+		jsq['Parser'] = Parser;
+	}
 	
 	// Standard functions
 	jsq['fn'] = {
@@ -1218,7 +1222,7 @@
 				return;
 			
 			input = input.slice(0);
-			input.unshift(argument.value);
+			input.unshift(argument.val);
 			output.push(_sprintf.apply(this, input));
 		},
 		'keys': function( input, output ) {
@@ -1227,7 +1231,7 @@
 			});
 		},
 		'length': function( input, output ) {
-			if( input instanceof Array || typeof input == _b.STRING ) {
+			if( input instanceof Array || typeof input == 'string' ) {
 				output.push(input.length);
 			} else if( input instanceof Object ) {
 				var count = 0;

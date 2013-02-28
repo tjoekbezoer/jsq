@@ -264,7 +264,7 @@
 					while( token = tokens.current() ) {
 						var type = _type(token.type);
 						
-						lexer.innerHTML += '<span class='+type+'>'+token.data+'</span>';
+						lexer.innerHTML += '<span class='+type+'>'+token.val+'</span>';
 						tokens.next();
 					}
 					if( lexer.innerHTML )
@@ -287,8 +287,8 @@
 						current = b;
 						
 						if( branch.children.length ) {
-							b.append(branch.value != null ?
-								'<span>'+branch.value+'</span>':
+							b.append(branch.val != null ?
+								'<span>'+branch.val+'</span>':
 								''
 							);
 							for(
@@ -299,8 +299,8 @@
 								b.append(arguments.callee(e));
 							}
 						} else {
-							b.append(branch.value != null ?
-								'<p>'+branch.value+'</p>':
+							b.append(branch.val != null ?
+								'<p>'+branch.val+'</p>':
 								''
 							);
 						}
