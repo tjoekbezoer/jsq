@@ -100,6 +100,35 @@ var DEV = true;
 			return input;
 		}
 	}
+	function _sort(a, b) {
+		// Copy arguments to avoid IE<=8 bug?
+		// http://www.zachleat.com/web/array-sort
+		var atype = _sort.typ(a), btype = _sort.typ(b);
+		if( atype != btype ) {
+			return _sort.types[atype] - _sort.types[btype];
+		} else if( a instanceof Array ) {
+			return 0;
+		} else if( a instanceof Object ) {
+			return 0;
+		} else if( atype == 'string' ) {
+			return a > b ? 1 : (a === b ? 0 : -1);
+		} else {
+			return a-b;
+		}
+	}
+	_sort.typ = function( val ) {
+		return	val instanceof Array && 'array' ||
+						val === null && 'null' ||
+						typeof val;
+	};
+	_sort.types = {
+		'null': 1,
+		'boolean': 2,
+		'number': 3,
+		'string': 4,
+		'array': 5,
+		'object': 6
+	};
 	// Replaces %# in a string with the (#+1)th argument.
 	function _sprintf( str /* ,replacement... */ ) {
 		var args = Array.prototype.slice.call(arguments, 1);
@@ -141,6 +170,7 @@ var DEV = true;
 		].join(''),
 		'gi'
 	);
+	// Token types.
 	// The elements in _t correlate to the _regexp subpatterns.
 	var _t = {
 		op_uny:	1,
@@ -158,7 +188,7 @@ var DEV = true;
 		str:		13,
 		wsp:		14
 	};
-	
+	// Types of parser branches.
 	var _b = {
 		ARGUMENT:				DEV && "argument" || 1,
 		ASSIGNMENT:			DEV && "assignment" || 2,
@@ -231,7 +261,7 @@ var DEV = true;
 		this.tokens = tokens;
 		this.i = 0;
 	};
-	Lexer.tokenTypes = _t;
+	DEV && (Lexer.tokenTypes = _t);
 	// Look back `num` non-whitespace tokens without moving the cursor.
 	Lexer.prototype.back = function( num ) {
 		var i = this.i, token;
@@ -1282,6 +1312,12 @@ var DEV = true;
 			});
 			if( !result )
 				output.push(input);
+		},
+		'sort': function( input, output, argument ) {
+			if( !(input instanceof Array) )
+				_error('sort: Can only sort arrays');
+			
+			output.push(input.sort(_sort));
 		},
 		'tonumber': function( input, output, argument, undefined ) {
 			if( argument )

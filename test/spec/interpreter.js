@@ -350,6 +350,12 @@
 		eq(simple, '.[] | select(.>=3)', [3,4]);
 	});
 	
+	test('sort', function() {
+		eq([1,3,2], 'sort', [[1,2,3]]);
+		eq(['a', 'ab', 'aa', 'A'], 'sort', [['A', 'a', 'aa', 'ab']]);
+		eq([true,false,1,null,'a',{},[]], 'sort', [[null,false,true,1,'a',[],{}]]);
+	});
+	
 	test('tonumber', function() {
 		eq('"1", "1foo", "foo1" | tonumber', [1,1,null]);
 	});
