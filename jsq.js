@@ -3,16 +3,13 @@
 var DEV = true;
 
 ;(function( window ) {
-	// Extend target object with the properties from the given source objects.
-	function _extend( target /*[, source]...*/ ) {
-		for( var i=1; i<arguments.length; i++ ) {
-			if( arguments[i] instanceof Object ) {
-				for( var key in arguments[i] ) {
-					target[key] = arguments[i][key];
-				}
-			}
-		}
-		return target;
+	
+	function _concat( array1, array2 ) {
+		if( !(array1 instanceof Array) )
+			array1 = [array1];
+		if( !(array2 instanceof Array) )
+			array2 = [array2];
+		return array1.concat(array2);
 	}
 	// Deep copy for simple objects and array
 	function _copy( target ) {
@@ -24,13 +21,6 @@ var DEV = true;
 			result[key] = _copy(val);
 		});
 		return result;
-	}
-	function _concat( array1, array2 ) {
-		if( !(array1 instanceof Array) )
-			array1 = [array1];
-		if( !(array2 instanceof Array) )
-			array2 = [array2];
-		return array1.concat(array2);
 	}
 	function _each( obj, iterator ) {
 		if( obj instanceof Array ) {
@@ -44,6 +34,84 @@ var DEV = true;
 		}
 		
 		return true;
+	}
+	// Extend target object with the properties from the given source objects.
+	function _extend( target /*[, source]...*/ ) {
+		for( var i=1; i<arguments.length; i++ ) {
+			if( arguments[i] instanceof Object ) {
+				for( var key in arguments[i] ) {
+					target[key] = arguments[i][key];
+				}
+			}
+		}
+		return target;
+	}
+	function _keys( obj ) {
+		var result = [];
+		for( var key in obj )
+			result.push(key);
+		return result.sort();
+	}
+	function _sort(a, b) {
+		// Copy arguments to avoid IE<=8 bug? (http://www.zachleat.com/web/array-sort)
+		var atype = _sort.typ(a), btype = _sort.typ(b);
+		if( atype != btype ) {
+			return _sort.types[atype] - _sort.types[btype];
+		} else if( a instanceof Array ) {
+			// Arrays are compared in sorted order. A shorter array is always
+			// considered smaller.
+			if( a.length != b.length )
+				return a.length - b.length;
+			
+			var acopy = a.slice(0).sort()
+				, bcopy = b.slice(0).sort()
+				, i, result;
+			for( i=0; i<a.length; i++ ) {
+				result = _sort(a[i], b[i]);
+				if( result != 0 ) return result;
+			}
+			return 0;
+		} else if( a instanceof Object ) {
+			// Objects are first compared by keys. If they're equal, compare by values.
+			// Comparison is performed by sorted key order.
+			var akeys = _keys(a)
+				, bkeys = _keys(b)
+				, result = _sort(akeys, bkeys);
+			if( result == 0 )
+				return _sort(_values(a, akeys), _values(b, bkeys));
+			return result;
+		} else if( atype == 'string' ) {
+			return a>b?1:(a===b?0:-1); //a.localeCompare(b);
+		} else {
+			return a-b;
+		}
+	}
+	_sort.typ = function( val ) {
+		return	val instanceof Array && 'array' ||
+						val === null && 'null' ||
+						typeof val;
+	};
+	_sort.types = {
+		'null': 1,
+		'boolean': 2,
+		'number': 3,
+		'string': 4,
+		'array': 5,
+		'object': 6
+	};
+	// Replaces %# in a string with the (#+1)th argument.
+	function _sprintf( str /* ,replacement... */ ) {
+		var args = Array.prototype.slice.call(arguments, 1);
+		return typeof str == 'string' && str.replace(/%(\d+)/g, function(match, i) { 
+			return args[i] || '';
+		});
+	};
+	function _values( obj, keys ) {
+		var result = [];
+		keys || (keys = _keys(obj));
+		for( var i=0; i<keys.length; i++ )
+			result.push(obj[keys[i]]);
+		return result;
 	}
 	// When target is an object: return a shallow copy of target from which all keys
 	// also existing in source are removed. Both arguments have to be objects.
@@ -79,6 +147,7 @@ var DEV = true;
 		
 		return target;
 	}
+	
 	// `which` is 'max', or 'min' -- Used in jsq.fn.min/max.
 	// If an argument is supplied, run it for each input element.
 	function _extreme( which, input, argument, undefined ) {
@@ -100,42 +169,6 @@ var DEV = true;
 			return input;
 		}
 	}
-	function _sort(a, b) {
-		// Copy arguments to avoid IE<=8 bug?
-		// http://www.zachleat.com/web/array-sort
-		var atype = _sort.typ(a), btype = _sort.typ(b);
-		if( atype != btype ) {
-			return _sort.types[atype] - _sort.types[btype];
-		} else if( a instanceof Array ) {
-			return 0;
-		} else if( a instanceof Object ) {
-			return 0;
-		} else if( atype == 'string' ) {
-			return a > b ? 1 : (a === b ? 0 : -1);
-		} else {
-			return a-b;
-		}
-	}
-	_sort.typ = function( val ) {
-		return	val instanceof Array && 'array' ||
-						val === null && 'null' ||
-						typeof val;
-	};
-	_sort.types = {
-		'null': 1,
-		'boolean': 2,
-		'number': 3,
-		'string': 4,
-		'array': 5,
-		'object': 6
-	};
-	// Replaces %# in a string with the (#+1)th argument.
-	function _sprintf( str /* ,replacement... */ ) {
-		var args = Array.prototype.slice.call(arguments, 1);
-		return typeof str == 'string' && str.replace(/%(\d+)/g, function(match, i) { 
-			return args[i] || '';
-		});
-	};
 	
 	var _regex = new RegExp(
 		[

@@ -354,6 +354,23 @@
 		eq([1,3,2], 'sort', [[1,2,3]]);
 		eq(['a', 'ab', 'aa', 'A'], 'sort', [['A', 'a', 'aa', 'ab']]);
 		eq([true,false,1,null,'a',{},[]], 'sort', [[null,false,true,1,'a',[],{}]]);
+		
+		// Sorting arrays
+		eq([[1,2,3,4], [5,6,7]], 'sort', [[[5,6,7], [1,2,3,4]]]);
+		eq([[3,4,5], [1,2,3]], 'sort', [[[1,2,3], [3,4,5]]]);
+		eq([['a', 'c'], ['a', 'b']], 'sort', [[['a','b'], ['a','c']]]);
+		
+		// Sorting objects
+		var obj1 = {foo:1, bar:2}
+			, obj2 = {foo:2, bar:3}
+			, obj3 = {foo:2, baz:2};
+		eq([obj2, obj1], 'sort', [[obj1, obj2]]);
+		eq([obj3, obj2], 'sort', [[obj2, obj3]]);
+		obj4 = {foo:1, bar:[1,2,3]};
+		obj5 = {foo:1, bar:[1,2,4]};
+		eq([obj5, obj4], 'sort', [[obj4, obj5]]);
+		obj5.bar[2] = 2;
+		eq([obj5, obj4], 'sort', [[obj5, obj4]]);
 	});
 	
 	test('tonumber', function() {
