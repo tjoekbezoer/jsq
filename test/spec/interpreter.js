@@ -44,7 +44,7 @@
 			input = [];
 		}
 		
-		deepEqual(jsq(input, query), result, title);
+		deepEqual(jsq(input, query), result, title||query);
 	}
 	
 	
@@ -83,13 +83,44 @@
 		eq('1&&2, 2&&1, 1 && 2, 1	&&	2', [2,1,2,2]);
 		eq('1&&0, 0&&1', [0,0]);
 		eq('1||2, 2||1, 1||0', [1,2,1]);
-		eq('1==1, 2!=1, 2>1, 2>=1, 1>=1, 1<2, 1<=2, 1<=1', [true,true,true,true,true,true,true,true]);
-		eq('2==1, 1!=1, 1>2, 1>=2, 2<1, 2<=1', [false,false,false,false,false,false]);
-		eq('"1"==1, "1"===1', [true,false]);
 		// Precedence
 		eq('1||2&&3', [1]);
 		eq('(1||2)&&3', [3]);
 		eq('0||2&&3', [3]);
+		// Comparing
+		eq('1==1, 2!=1, 2>1, 2>=1, 1>=1, 1<2, 1<=2, 1<=1', [true,true,true,true,true,true,true,true]);
+		eq('2==1, 1!=1, 1>2, 1>=2, 2<1, 2<=1', [false,false,false,false,false,false]);
+		eq('"foo"=="foo", "foo">"bar", "foo1">"foo"', [true,true,true]);
+		eq('""==false', [true]);
+		eq('"1"==1, "1"===1', [true,false]);
+		eq('1>"0", "0"<"1"', [true,true]);
+		// Comparing arrays
+		eq('[1,2]==[1,2], [1,2]==[1,3], [1,2]==[2,1]', [true,false,false]);
+		eq('[1,2]>=[1,2], [1,3]>=[1,2], [1,2,3]>=[4,5]', [true,true,true]);
+		eq('[1,2]<=[1,2], [1,2]<=[1,3], [4,5]<=[1,2,3]', [true,true,true]);
+		eq('[3,4]>[1,2], [3,4]>[3,1], [1,2,3]>[5,6]', [true,true,true]);
+		eq('[1,2]<[3,4], [3,1]<[3,4], [5,6]<[1,2,3]', [true,true,true]);
+		// Comparing objects
+		eq('{foo:1, bar:2} == {foo:1, bar:2}', [true]);
+		eq('{foo:1, bar:2} != {foo:1, bar:2}', [false]);
+		eq('{foo:1, bar:2} != {foo:1, bar:3}', [true]);
+		eq('{foo:1, bar:2} == {foo:1, bar:3}', [false]);
+		eq('{foo:1, bar:[1,2]} == {foo:1, bar:[1,2]}', [true]);
+		eq('{foo:1, bar:[1,2]} == {foo:1, bar:[1,3]}', [false]);
+		eq('{foo:1, bar:[1,3]} > {foo:1, bar:[1,2]}', [true]);
+		// Comparing mixed
+		eq('null<false, null<true, null<0, null<1, null<"", null<"a", null<[], null<{}', [true,true,true,true,true,true,true,true]);
+		eq('null==null, null==false, null==true, null==0, null==1, null=="", null=="a", null==[], null=={}', [true,false,false,false,false,false,false,false,false]);
+		eq('false>null, false<true, false<0, false<1, false<"", false<"a", false<[], false<{}', [true,true,true,true,true,true,true,true]);
+		// CAUTION: [] is not an array, but an empty collection which evaluates to nothing. So []==false!
+		eq('false==false, false==true, false==0, false==1, false=="", false=="a", false==[], false=={}', [true,false,true,false,true,false,true,false]);
+		eq('true>null, true>false, true<0, true<1, true<"", true<"a", true<[], true<{}', [true,true,true,true,true,true,true,true]);
+		eq('true==0, true==1, true=="", true=="a", true==[], true=={}', [false,true,false,false,false,false]);
+		// Comparing strings and numbers happens the 'JavaScript way'.
+		eq('0>null, 0>false, 0>true, 0<1, 0<"", 0<"a", 0<[], 0<{}', [true,true,true,true,false,false,true,true]);
+		eq('1>null, 1>false, 1>true, 1>0, 1<"", 1<"a", 1<[], 1<{}', [true,true,true,true,false,false,true,true]);
+		eq('0==0, 0==1, 0=="", 0=="a", 0==[], 0=={}', [true,false,true,false,true,false]);
+		
 		
 		// Bitwise
 		eq('1or2', [3]);
@@ -356,7 +387,7 @@
 		eq([true,false,1,null,'a',{},[]], 'sort', [[null,false,true,1,'a',[],{}]]);
 		
 		// Sorting arrays
-		eq([[1,2,3,4], [5,6,7]], 'sort', [[[5,6,7], [1,2,3,4]]]);
+		eq([[6,1,0], [1,2,3,4], [5,6,7]], 'sort', [[[5,6,7], [6,1,0], [1,2,3,4]]]);
 		eq([[3,4,5], [1,2,3]], 'sort', [[[1,2,3], [3,4,5]]]);
 		eq([['a', 'c'], ['a', 'b']], 'sort', [[['a','b'], ['a','c']]]);
 		

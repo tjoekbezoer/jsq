@@ -63,9 +63,7 @@ var DEV = true;
 			if( a.length != b.length )
 				return a.length - b.length;
 			
-			var acopy = a.slice(0).sort()
-				, bcopy = b.slice(0).sort()
-				, i, result;
+			var i, result;
 			for( i=0; i<a.length; i++ ) {
 				result = _compare(a[i], b[i]);
 				if( result != 0 ) return result;
@@ -99,6 +97,13 @@ var DEV = true;
 		'array': 5,
 		'object': 6
 	};
+	// Used in _binary to detect object comparisons.
+	function _scalar( mixed ) {
+		return	typeof mixed == 'number' && 'number' ||
+						typeof mixed == 'string' && 'string' ||
+						typeof mixed == 'boolean' && 'boolean' ||
+						false;
+	}
 	// Replaces %# in a string with the (#+1)th argument.
 	function _sprintf( str /* ,replacement... */ ) {
 		var args = Array.prototype.slice.call(arguments, 1);
@@ -918,7 +923,27 @@ var DEV = true;
 		for( i=0; i<l.length; i++ ) {
 			for( j=0; j<r.length; j++ ) {
 				switch( op ) {
-					// Perform arithmetic operation on values
+					case '==':
+					case '!=':
+						// Perform a custom equality comparison only
+						// when both sides are non-scalar.
+						if( !_scalar(l[i]) && !_scalar(r[j]) )
+							ret = _binary.comp[op](_compare(l[i], r[j]));
+						else
+							ret = _binary.op[op](l[i], r[j]);
+						break;
+					case '>=':
+					case '<=':
+					case '>':
+					case '<':
+						// When comparing non-scalar values, perform a custom comparison.
+						var lscalar = _scalar(l[i])
+							, rscalar = _scalar(r[j]);
+						if( !lscalar || !rscalar || lscalar == 'boolean' || rscalar == 'boolean' ) {
+							ret = _binary.comp[op](_compare(l[i], r[j]));
+							break;
+						}
+					case '===':
 					case '+':
 					case '-':
 					case '*':
@@ -928,13 +953,6 @@ var DEV = true;
 					case 'xor':
 					case '&&':
 					case '||':
-					case '==':
-					case '===':
-					case '!=':
-					case '>=':
-					case '<=':
-					case '>':
-					case '<':
 						ret = _binary.op[op](l[i], r[j]);
 						break;
 				}
@@ -943,6 +961,16 @@ var DEV = true;
 			}
 		}
 	}
+	// For comparing non-scalar values. Expects that
+	// parameter `val` is the result of a `_compare` call.
+	_binary.comp = {
+		'==': function( val ) { return val==0 },
+		'!=': function( val ) { return val!=0 },
+		'>=': function( val ) { return val>=0 },
+		'<=': function( val ) { return val<=0 },
+		'>':  function( val ) { return val>0 },
+		'<':  function( val ) { return val<0 }
+	};
 	_binary.op = {
 		'+':  function( l, r ) {
 			if( !(l instanceof Object || r instanceof Object) )
@@ -969,9 +997,9 @@ var DEV = true;
 		'<=':  function( l, r ) { return l <= r },
 		'>':   function( l, r ) { return l > r },
 		'<':   function( l, r ) { return l < r },
-		'and':   function( l, r ) { return l & r },
+		'and': function( l, r ) { return l & r },
 		'or':  function( l, r ) { return l | r },
-		'xor':   function( l, r ) { return l ^ r }
+		'xor': function( l, r ) { return l ^ r }
 	};
 	function _expression( input, output, branch ) {
 		var col, i, result;
