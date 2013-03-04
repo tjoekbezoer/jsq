@@ -52,11 +52,11 @@ var DEV = true;
 			result.push(key);
 		return result.sort();
 	}
-	function _sort(a, b) {
+	function _compare(a, b) {
 		// Copy arguments to avoid IE<=8 bug? (http://www.zachleat.com/web/array-sort)
-		var atype = _sort.typ(a), btype = _sort.typ(b);
+		var atype = _compare.typ(a), btype = _compare.typ(b);
 		if( atype != btype ) {
-			return _sort.types[atype] - _sort.types[btype];
+			return _compare.types[atype] - _compare.types[btype];
 		} else if( a instanceof Array ) {
 			// Arrays are compared in sorted order. A shorter array is always
 			// considered smaller.
@@ -67,7 +67,7 @@ var DEV = true;
 				, bcopy = b.slice(0).sort()
 				, i, result;
 			for( i=0; i<a.length; i++ ) {
-				result = _sort(a[i], b[i]);
+				result = _compare(a[i], b[i]);
 				if( result != 0 ) return result;
 			}
 			return 0;
@@ -76,9 +76,9 @@ var DEV = true;
 			// Comparison is performed by sorted key order.
 			var akeys = _keys(a)
 				, bkeys = _keys(b)
-				, result = _sort(akeys, bkeys);
+				, result = _compare(akeys, bkeys);
 			if( result == 0 )
-				return _sort(_values(a, akeys), _values(b, bkeys));
+				return _compare(_values(a, akeys), _values(b, bkeys));
 			return result;
 		} else if( atype == 'string' ) {
 			return a>b?1:(a===b?0:-1); //a.localeCompare(b);
@@ -86,12 +86,12 @@ var DEV = true;
 			return a-b;
 		}
 	}
-	_sort.typ = function( val ) {
+	_compare.typ = function( val ) {
 		return	val instanceof Array && 'array' ||
 						val === null && 'null' ||
 						typeof val;
 	};
-	_sort.types = {
+	_compare.types = {
 		'null': 1,
 		'boolean': 2,
 		'number': 3,
@@ -1350,7 +1350,7 @@ var DEV = true;
 			if( !(input instanceof Array) )
 				_error('sort: Can only sort arrays');
 			
-			output.push(input.sort(_sort));
+			output.push(input.sort(_compare));
 		},
 		'tonumber': function( input, output, argument, undefined ) {
 			if( argument )
