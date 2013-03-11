@@ -411,4 +411,8 @@
 	test('tostring', function() {
 		eq('false, 1, [1,2,3] | tostring', ['false', '1', '[1,2,3]']);
 	});
+	
+	test('unique', function() {
+		eq('[1,2,2,3,"foo","bar","foo"] | unique', [[1,2,3,'foo','bar']]);
+	});
 })();
