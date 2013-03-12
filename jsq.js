@@ -3,16 +3,13 @@
 var DEV = true;
 
 ;(function( window ) {
-	// Extend target object with the properties from the given source objects.
-	function _extend( target /*[, source]...*/ ) {
-		for( var i=1; i<arguments.length; i++ ) {
-			if( arguments[i] instanceof Object ) {
-				for( var key in arguments[i] ) {
-					target[key] = arguments[i][key];
-				}
-			}
-		}
-		return target;
+	
+	function _concat( array1, array2 ) {
+		if( !(array1 instanceof Array) )
+			array1 = [array1];
+		if( !(array2 instanceof Array) )
+			array2 = [array2];
+		return array1.concat(array2);
 	}
 	// Deep copy for simple objects and array
 	function _copy( target ) {
@@ -24,13 +21,6 @@ var DEV = true;
 			result[key] = _copy(val);
 		});
 		return result;
-	}
-	function _concat( array1, array2 ) {
-		if( !(array1 instanceof Array) )
-			array1 = [array1];
-		if( !(array2 instanceof Array) )
-			array2 = [array2];
-		return array1.concat(array2);
 	}
 	function _each( obj, iterator ) {
 		if( obj instanceof Array ) {
@@ -44,6 +34,98 @@ var DEV = true;
 		}
 		
 		return true;
+	}
+	// Extend target object with the properties from the given source objects.
+	function _extend( target /*[, source]...*/ ) {
+		for( var i=1; i<arguments.length; i++ ) {
+			if( arguments[i] instanceof Object ) {
+				for( var key in arguments[i] ) {
+					target[key] = arguments[i][key];
+				}
+			}
+		}
+		return target;
+	}
+	// Returns highest found index of value, or -1 if not found.
+	function _indexOf( array, value ) {
+		for( var i=array.length-1; i>=0; i-- ) {
+			if( array[i] === value )
+				return i;
+		}
+		return -1;
+	}
+	// Returns an object's keys in sorted order.
+	function _keys( obj ) {
+		var result = [];
+		for( var key in obj )
+			result.push(key);
+		return result.sort();
+	}
+	function _compare(a, b) {
+		// Copy arguments to avoid IE<=8 bug? (http://www.zachleat.com/web/array-sort)
+		var atype = _compare.typ(a), btype = _compare.typ(b);
+		if( atype != btype ) {
+			return _compare.types[atype] - _compare.types[btype];
+		} else if( a instanceof Array ) {
+			// Arrays are compared in sorted order. A shorter array is always
+			// considered smaller.
+			if( a.length != b.length )
+				return a.length - b.length;
+			
+			var i, result;
+			for( i=0; i<a.length; i++ ) {
+				result = _compare(a[i], b[i]);
+				if( result != 0 ) return result;
+			}
+			return 0;
+		} else if( a instanceof Object ) {
+			// Objects are first compared by keys. If they're equal, compare by values.
+			// Comparison is performed by sorted key order.
+			var akeys = _keys(a)
+				, bkeys = _keys(b)
+				, result = _compare(akeys, bkeys);
+			if( result == 0 )
+				return _compare(_values(a, akeys), _values(b, bkeys));
+			return result;
+		} else if( atype == 'string' ) {
+			return a>b?1:(a===b?0:-1); //a.localeCompare(b);
+		} else {
+			return a-b;
+		}
+	}
+	_compare.typ = function( val ) {
+		return	val instanceof Array && 'array' ||
+						val === null && 'null' ||
+						typeof val;
+	};
+	_compare.types = {
+		'null': 1,
+		'boolean': 2,
+		'number': 3,
+		'string': 4,
+		'array': 5,
+		'object': 6
+	};
+	// Used in _binary to detect object comparisons.
+	function _scalar( mixed ) {
+		return	typeof mixed == 'number' && 'number' ||
+						typeof mixed == 'string' && 'string' ||
+						typeof mixed == 'boolean' && 'boolean' ||
+						false;
+	}
+	// Replaces %# in a string with the (#+1)th argument.
+	function _sprintf( str /* ,replacement... */ ) {
+		var args = Array.prototype.slice.call(arguments, 1);
+		return typeof str == 'string' && str.replace(/%(\d+)/g, function(match, i) { 
+			return args[i] || '';
+		});
+	};
+	function _values( obj, keys ) {
+		var result = [];
+		keys || (keys = _keys(obj));
+		for( var i=0; i<keys.length; i++ )
+			result.push(obj[keys[i]]);
+		return result;
 	}
 	// When target is an object: return a shallow copy of target from which all keys
 	// also existing in source are removed. Both arguments have to be objects.
@@ -79,6 +161,7 @@ var DEV = true;
 		
 		return target;
 	}
+	
 	// `which` is 'max', or 'min' -- Used in jsq.fn.min/max.
 	// If an argument is supplied, run it for each input element.
 	function _extreme( which, input, argument, undefined ) {
@@ -100,13 +183,8 @@ var DEV = true;
 			return input;
 		}
 	}
-	// Replaces %# in a string with the (#+1)th argument.
-	function _sprintf( str /* ,replacement... */ ) {
-		var args = Array.prototype.slice.call(arguments, 1);
-		return typeof str == 'string' && str.replace(/%(\d+)/g, function(match, i) { 
-			return args[i] || '';
-		});
-	};
+	
+	var _hasOwnProperty = ({}).hasOwnProperty;
 	
 	var _regex = new RegExp(
 		[
@@ -141,6 +219,7 @@ var DEV = true;
 		].join(''),
 		'gi'
 	);
+	// Token types.
 	// The elements in _t correlate to the _regexp subpatterns.
 	var _t = {
 		op_uny:	1,
@@ -158,34 +237,32 @@ var DEV = true;
 		str:		13,
 		wsp:		14
 	};
-	
-	var _b = {
-		ARGUMENT:				DEV && "argument" || 1,
-		ASSIGNMENT:			DEV && "assignment" || 2,
-		BINARY:					DEV && "binary" || 3,
-		BOOL:						DEV && "bool" || 4,
-		COLLECT:				DEV && "collect" || 5,
-		ELEMENT:				DEV && "element" || 6,
-		FILTER:					DEV && "filter" || 7,
-		FUNCTION_CALL:	DEV && "function_call" || 8,
-		KEY:						DEV && "key" || 9,
-		KEY_ALL:				DEV && "key_all" || 10,
-		LIST:						DEV && "list" || 11,
-		NAME:						DEV && "name" || 12,
-		NIL:						DEV && "null" || 13,
-		NUMBER:					DEV && "number" || 14,
-		OBJECT:					DEV && "object" || 15,
-		OPERATOR:				DEV && "operator" || 16,
-		PARENS:					DEV && "parens" || 17,
-		PIPE:						DEV && "pipe" || 18,
-		PROGRAM:				DEV && "program" || 19,
-		STRING:					DEV && "string" || 20,
-		TARGET:					DEV && "target" || 21,
-		UNARY:					DEV && "unary" || 22,
-		UNDEFINED:			DEV && "undefined" || 23,
-		VALUE:					DEV && "value" || 24,
-		VARIABLE:				DEV && "variable" || 25
-	};
+	// Types of parser branches.
+	var ARGUMENT = 				DEV && "argument" || 1
+		, ASSIGNMENT = 			DEV && "assignment" || 2
+		, BINARY = 					DEV && "binary" || 3
+		, BOOL = 						DEV && "bool" || 4
+		, COLLECT = 				DEV && "collect" || 5
+		, ELEMENT = 				DEV && "element" || 6
+		, FILTER = 					DEV && "filter" || 7
+		, FUNCTION_CALL = 	DEV && "function_call" || 8
+		, KEY = 						DEV && "key" || 9
+		, KEY_ALL = 				DEV && "key_all" || 10
+		, LIST = 						DEV && "list" || 11
+		, NAME = 						DEV && "name" || 12
+		, NIL = 						DEV && "null" || 13
+		, NUMBER = 					DEV && "number" || 14
+		, OBJECT = 					DEV && "object" || 15
+		, OPERATOR = 				DEV && "operator" || 16
+		, PARENS = 					DEV && "parens" || 17
+		, PIPE = 						DEV && "pipe" || 18
+		, PROGRAM = 				DEV && "program" || 19
+		, STRING = 					DEV && "string" || 20
+		, TARGET = 					DEV && "target" || 21
+		, UNARY = 					DEV && "unary" || 22
+		, UNDEFINED = 			DEV && "undefined" || 23
+		, VALUE = 					DEV && "value" || 24
+		, VARIABLE = 				DEV && "variable" || 25
 	
 	// Error messages.
 	var _e = {
@@ -231,7 +308,7 @@ var DEV = true;
 		this.tokens = tokens;
 		this.i = 0;
 	};
-	Lexer.tokenTypes = _t;
+	DEV && (Lexer.tokenTypes = _t);
 	// Look back `num` non-whitespace tokens without moving the cursor.
 	Lexer.prototype.back = function( num ) {
 		var i = this.i, token;
@@ -274,7 +351,7 @@ var DEV = true;
 		// Unique ID for every branch
 		this.id = 0;
 		this.tokens = new Lexer(query);
-		this.tree = this.add(_b.PROGRAM);
+		this.tree = this.add(PROGRAM);
 	};
 	Parser.prototype.add = function( name ) {
 		var d;
@@ -321,13 +398,13 @@ var DEV = true;
 					this.parse_assignment(token);
 					break;
 				case _t.bln:
-					this.addup(_b.BOOL).val = token.val;
+					this.addup(BOOL).val = token.val;
 					break;
 				case _t.nil:
-					this.addup(_b.NIL);
+					this.addup(NIL);
 					break;
 				case _t.udf:
-					this.addup(_b.UNDEFINED);
+					this.addup(UNDEFINED);
 					break;
 				case _t.vrb:
 					this.parse_variable();
@@ -375,7 +452,7 @@ var DEV = true;
 			this.tokens.next();
 		}
 		
-		if( this.tokens.eof() && this.current.name != _b.PROGRAM )
+		if( this.tokens.eof() && this.current.name != PROGRAM )
 			_error(_e.EOF);
 		
 		return this;
@@ -387,16 +464,16 @@ var DEV = true;
 		// If assignment follows a pipe, take the end of the pipe
 		// as the value for the assignment. Otherwise the entire pipe
 		// would be taken as input, producing unexpected results.
-		if( this.current.last.name == _b.PIPE ) {
+		if( this.current.last.name == PIPE ) {
 			this.current = this.current.last;
 			num = 2;
 		}
 		
-		this.wrap(_b.ASSIGNMENT);
+		this.wrap(ASSIGNMENT);
 		switch( opToken.val ) {
 			case 'as':
 				if( token && token.type == _t.vrb )
-					this.addup(_b.NAME).val = token.val;
+					this.addup(NAME).val = token.val;
 				break;
 			case '=':
 			case '|=':
@@ -404,19 +481,19 @@ var DEV = true;
 			case '-=':
 			case '*=':
 			case '/=':
-				if( this.current.last.name != _b.FILTER )
+				if( this.current.last.name != FILTER )
 					_error(_e.UNEXPECTED_TOKEN, opToken.val, opToken.index);
 				if( opToken.val != '=' && opToken.val != '|=' ) {
 					// Shorthand op for x |= . op filter
-					this.addup(_b.OPERATOR).val = '|='
-					this.add(_b.BINARY);
-					this.addup(_b.FILTER);
-					this.addup(_b.OPERATOR).val = opToken.val.substr(0,1);
+					this.addup(OPERATOR).val = '|='
+					this.add(BINARY);
+					this.addup(FILTER);
+					this.addup(OPERATOR).val = opToken.val.substr(0,1);
 					this.parse();
 					this.up();
 				} else {
 					// = or |=
-					this.addup(_b.OPERATOR).val = opToken.val;
+					this.addup(OPERATOR).val = opToken.val;
 					this.parse();
 				}
 				break;
@@ -433,14 +510,14 @@ var DEV = true;
 		
 		if(
 			lhs && (
-				lhs.name == _b.PIPE ||
+				lhs.name == PIPE ||
 				// Value assignment, eg.: .foo=1 or .foo|=.[0]
-				lhs.name == _b.ASSIGNMENT && lhs.children.length == 3 ||
-				token.type == _t.op_arm && lhs.name == _b.LIST ||
+				lhs.name == ASSIGNMENT && lhs.children.length == 3 ||
+				token.type == _t.op_arm && lhs.name == LIST ||
 				// The left hand side is a binary, so it has 3 children:
 				// a lhs, an operator and a rhs. Perform an action based on
 				// its operator.
-				lhs.name == _b.BINARY &&
+				lhs.name == BINARY &&
 				(prev = lhs.children[1]) && (
 					// Logical precedence
 					(
@@ -474,17 +551,17 @@ var DEV = true;
 			// See if the - operator should be parsed as a unary instead.
 			if( token.val == '-' && (
 					!lhs ||
-					lhs.name == _b.OPERATOR ||
+					lhs.name == OPERATOR ||
 					// to parse things like 1,-1 and 1,2--1 correctly
-					lhs.parent.name == _b.LIST && this.tokens.back().val == ',' ||
-					lhs.parent.name == _b.PIPE
+					lhs.parent.name == LIST && this.tokens.back().val == ',' ||
+					lhs.parent.name == PIPE
 				)
 			) {
 				this.parse_unary();
 				return;
 			} else if( lhs ) {
-				this.wrap(_b.BINARY);
-				op = this.addup(_b.OPERATOR);
+				this.wrap(BINARY);
+				op = this.addup(OPERATOR);
 				op.val = token.val;
 				op.type = token.type;
 				
@@ -502,7 +579,7 @@ var DEV = true;
 	Parser.prototype.parse_collection = function() {
 		var token;
 		
-		this.add(_b.COLLECT);
+		this.add(COLLECT);
 		while(
 			(token = this.tokens.peek(true)) &&
 			token.val != ']'
@@ -533,15 +610,15 @@ var DEV = true;
 			) {
 				// This is a filter on an expression, so wrap that expression as this
 				// filter's target.
-				this.wrap(_b.FILTER);
-				this.wrap(_b.TARGET);
+				this.wrap(FILTER);
+				this.wrap(TARGET);
 				this.up();
 			} else {
 				return false;
 			}
 		} else {
-			this.add(_b.FILTER);
-			this.addup(_b.TARGET).val = '.';
+			this.add(FILTER);
+			this.addup(TARGET).val = '.';
 		}
 		
 		while( peek = this.tokens.peek() ) {
@@ -555,14 +632,14 @@ var DEV = true;
 				}
 				
 				if( all ) {
-					this.addup(_b.KEY_ALL);
+					this.addup(KEY_ALL);
 					all = false;
 				}
 				
 				if( !(token = this.tokens.skip(true)) || token.val != ']' )
 					_error(token ? _e.UNEXPECTED_TOKEN : _e.EOF, token && token.val, token && token.index);
 			} else if(
-				(this.current.last.name == _b.TARGET && peek.val != '.' || peek.val == '.' && this.tokens.next()) &&
+				(this.current.last.name == TARGET && peek.val != '.' || peek.val == '.' && this.tokens.next()) &&
 				(peek = this.tokens.peek()) && (
 					peek.type == _t.id ||
 					peek.type == _t.itg
@@ -571,9 +648,9 @@ var DEV = true;
 				// Shorthand form
 				token = this.tokens.next();
 				if( token.type == _t.id ) {
-					this.addup(_b.STRING).val = token.val;
+					this.addup(STRING).val = token.val;
 				} else {
-					this.addup(_b.NUMBER).val = parseFloat(token.val);
+					this.addup(NUMBER).val = parseFloat(token.val);
 				}
 			} else {
 				break;
@@ -592,13 +669,13 @@ var DEV = true;
 	Parser.prototype.parse_function = function() {
 		var peek, token;
 		
-		this.add(_b.FUNCTION_CALL).val = this.tokens.current().val;
+		this.add(FUNCTION_CALL).val = this.tokens.current().val;
 		
 		if( (peek = this.tokens.peek(true)) && peek.val == '(' ) {
 			this.tokens.skip(true);
 			
 			if( (peek = this.tokens.peek(true)) && peek.val != ')' ) {
-				this.add(_b.ARGUMENT);
+				this.add(ARGUMENT);
 				while( (token = this.tokens.skip(true)) && token.val != ')' ) {
 					this.parse();
 				}
@@ -623,12 +700,12 @@ var DEV = true;
 				cur = this.current,
 				peek;
 		
-		if( len && (cur = this.current.children[len-1]).name == _b.LIST ) {
+		if( len && (cur = this.current.children[len-1]).name == LIST ) {
 			// Last child was already a list? Add this to that branch
 			this.current = cur;
 		} else if( len ) {
 			// Otherwise wrap last child and the new value into a new list branch
-			this.wrap(_b.LIST);
+			this.wrap(LIST);
 		} else {
 			_error(_e.UNEXPECTED_TOKEN, ',', this.tokens.current().index);
 		}
@@ -654,9 +731,9 @@ var DEV = true;
 	Parser.prototype.parse_literal = function() {
 		var token = this.tokens.current();
 		if( token.type == _t.str ) {
-			this.addup(_b.STRING).val = token.val;
+			this.addup(STRING).val = token.val;
 		} else {
-			this.addup(_b.NUMBER).val = parseFloat(token.val);
+			this.addup(NUMBER).val = parseFloat(token.val);
 		}
 	};
 	// Parse object definitions
@@ -664,7 +741,7 @@ var DEV = true;
 		var error = false,
 			token, peek, key, value;
 		
-		this.add(_b.OBJECT);
+		this.add(OBJECT);
 		while( (token = this.tokens.skip(true)) && token.val != '}' ) {
 			key_switch:
 			switch( token.type ) {
@@ -692,15 +769,15 @@ var DEV = true;
 					} else if( token.type != _t.ctl || token.val == '.' || token.val == '(' ) {
 						// Element is found. The key can be a literal, a filter, or a complex
 						// expression in parenthesis that returns one result
-						this.add(_b.ELEMENT);
+						this.add(ELEMENT);
 						switch( token.type ) {
 							case _t.itg:
 							case _t.str:
 							case _t.id:
-								this.addup(_b.KEY).val = token.val;
+								this.addup(KEY).val = token.val;
 								break;
 							default:
-								this.add(_b.KEY);
+								this.add(KEY);
 								this.parse();
 								this.up();
 						}
@@ -720,7 +797,7 @@ var DEV = true;
 								case _t.nil:
 								case _t.udf:
 								case _t.vrb:
-									this.add(_b.VALUE);
+									this.add(VALUE);
 									if(
 										// When token is arithmetic, only '-'' is allowed (as a unary)
 										token.type == _t.op_arm && token.val != '-' ||
@@ -732,17 +809,17 @@ var DEV = true;
 									} else {
 										_error(_e.UNEXPECTED_TOKEN, token.val, token.index);
 									}
-									// Also up out of _b.ELEMENT
+									// Also up out of ELEMENT
 									this.up(2);
 									break key_switch;
 							}
 						} else if( token.type != _t.ctl && peek && (peek.val == ',' || peek.val == '}') ) {
 							// Shortcut filter
-							this.add(_b.VALUE);
-							this.add(_b.FILTER);
-							this.addup(_b.TARGET).val = '.';
-							this.addup(_b.STRING).val = token.val;
-							// Also up out of _b.ELEMENT
+							this.add(VALUE);
+							this.add(FILTER);
+							this.addup(TARGET).val = '.';
+							this.addup(STRING).val = token.val;
+							// Also up out of ELEMENT
 							this.up(3);
 							break;
 						}
@@ -755,7 +832,7 @@ var DEV = true;
 	};
 	Parser.prototype.parse_parens = function() {
 		var token;
-		this.add(_b.PARENS);
+		this.add(PARENS);
 		while( (token = this.tokens.skip(true)) && token.val != ')' )
 			this.parse();
 		this.up();
@@ -764,7 +841,7 @@ var DEV = true;
 	};
 	// 
 	Parser.prototype.parse_pipe = function() {
-		this.wrap(_b.PIPE);
+		this.wrap(PIPE);
 		this.tokens.skip(true);
 		this.parse();
 		this.up();
@@ -773,12 +850,12 @@ var DEV = true;
 		var token = this.tokens.current();
 		if( !this.tokens.skip(true) )
 			_error(_e.EOF);
-		this.add(_b.UNARY).val = token.val;
+		this.add(UNARY).val = token.val;
 		this.parse();
 		this.up();
 	};
 	Parser.prototype.parse_variable = function() {
-		var current = this.add(_b.VARIABLE),
+		var current = this.add(VARIABLE),
 				peek;
 		current.val = this.tokens.current().val;
 		
@@ -820,7 +897,7 @@ var DEV = true;
 	};
 	// Say you have:
 	//    program > filter
-	// Now when you do wrap(_b.LIST):
+	// Now when you do wrap(LIST):
 	//    program > list > filter
 	Parser.prototype.wrap = function( name ) {
 		var last, parent, ret;
@@ -841,10 +918,10 @@ var DEV = true;
 		var op = branch.children[1].val,
 			lhv = branch.children[0],
 			rhv = branch.children[2];
-		var l = lhv.name == _b.NUMBER ?
+		var l = lhv.name == NUMBER ?
 			[lhv.val] :
 			_expression(input, [], lhv);
-		var r = rhv.name == _b.NUMBER ?
+		var r = rhv.name == NUMBER ?
 			[rhv.val] :
 			_expression(input, [], rhv);
 		var i, j, ret, key;
@@ -855,7 +932,27 @@ var DEV = true;
 		for( i=0; i<l.length; i++ ) {
 			for( j=0; j<r.length; j++ ) {
 				switch( op ) {
-					// Perform arithmetic operation on values
+					case '==':
+					case '!=':
+						// Perform a custom equality comparison only
+						// when both sides are non-scalar.
+						if( !_scalar(l[i]) && !_scalar(r[j]) )
+							ret = _binary.comp[op](_compare(l[i], r[j]));
+						else
+							ret = _binary.op[op](l[i], r[j]);
+						break;
+					case '>=':
+					case '<=':
+					case '>':
+					case '<':
+						// When comparing non-scalar values, perform a custom comparison.
+						var lscalar = _scalar(l[i])
+							, rscalar = _scalar(r[j]);
+						if( !lscalar || !rscalar || lscalar == 'boolean' || rscalar == 'boolean' ) {
+							ret = _binary.comp[op](_compare(l[i], r[j]));
+							break;
+						}
+					case '===':
 					case '+':
 					case '-':
 					case '*':
@@ -865,13 +962,6 @@ var DEV = true;
 					case 'xor':
 					case '&&':
 					case '||':
-					case '==':
-					case '===':
-					case '!=':
-					case '>=':
-					case '<=':
-					case '>':
-					case '<':
 						ret = _binary.op[op](l[i], r[j]);
 						break;
 				}
@@ -880,6 +970,16 @@ var DEV = true;
 			}
 		}
 	}
+	// For comparing non-scalar values. Expects that
+	// parameter `val` is the result of a `_compare` call.
+	_binary.comp = {
+		'==': function( val ) { return val==0 },
+		'!=': function( val ) { return val!=0 },
+		'>=': function( val ) { return val>=0 },
+		'<=': function( val ) { return val<=0 },
+		'>':  function( val ) { return val>0 },
+		'<':  function( val ) { return val<0 }
+	};
 	_binary.op = {
 		'+':  function( l, r ) {
 			if( !(l instanceof Object || r instanceof Object) )
@@ -906,65 +1006,65 @@ var DEV = true;
 		'<=':  function( l, r ) { return l <= r },
 		'>':   function( l, r ) { return l > r },
 		'<':   function( l, r ) { return l < r },
-		'and':   function( l, r ) { return l & r },
+		'and': function( l, r ) { return l & r },
 		'or':  function( l, r ) { return l | r },
-		'xor':   function( l, r ) { return l ^ r }
+		'xor': function( l, r ) { return l ^ r }
 	};
 	function _expression( input, output, branch ) {
 		var col, i, result;
 		
 		switch( branch.name ) {
-			case _b.ASSIGNMENT:
+			case ASSIGNMENT:
 				_assignment(input, output, branch.children);
 				break;
-			case _b.BINARY:
+			case BINARY:
 				_binary(input, output, branch);
 				break;
-			case _b.BOOL:
+			case BOOL:
 				output.push(branch.val=='true'?true:false);
 				break;
-			case _b.COLLECT:
+			case COLLECT:
 				col = [];
 				branch.children.length && _expression(input, col, branch.children[0]);
 				output.push(col);
 				break;
-			case _b.LIST:
+			case LIST:
 				for( i=0; i<branch.children.length; i++ )
 					_expression(input, output, branch.children[i]);
 				break;
-			case _b.FILTER:
+			case FILTER:
 				_filter(input, input, output, branch.children);
 				break;
-			case _b.FUNCTION_CALL:
+			case FUNCTION_CALL:
 				_function(input, output, branch);
 				break;
-			case _b.NIL:
+			case NIL:
 				output.push(null);
 				break;
-			case _b.NUMBER:
-			case _b.STRING:
+			case NUMBER:
+			case STRING:
 				output.push(branch.val);
 				break;
-			case _b.OBJECT:
+			case OBJECT:
 				_object(input, output, branch.children);
 				break;
-			case _b.PARENS:
+			case PARENS:
 				result = _expression(input, [], branch.children[0]);
 				output.push.apply(output, result);
 				break;
-			case _b.PIPE:
+			case PIPE:
 				input = _expression(input, output, branch.children[0]);
 				input = input.splice(0,input.length);
 				for( i=0; i<input.length; i++ )
 					_expression([input[i]], output, branch.children[1]);
 				break;
-			case _b.UNARY:
+			case UNARY:
 				_unary(input, output, branch);
 				break;
-			case _b.UNDEFINED:
+			case UNDEFINED:
 				output.push(void(0));
 				break;
-			case _b.VARIABLE:
+			case VARIABLE:
 				_variable(input, output, branch);
 				break;
 		}
@@ -1039,16 +1139,16 @@ var DEV = true;
 			// TODO: `range` as key selector for arrays
 			if( !child ) {
 				callback(element);
-			} else if( child.name == _b.KEY_ALL ) {
+			} else if( child.name == KEY_ALL ) {
 				// All elements
 				_each(element, !filter.length ? callback : function( val ) {
 					_filter(all, [val], output, filter, callback);
 				});
 			} else if(
-				element instanceof Array && child.name == _b.NUMBER ||
+				element instanceof Array && child.name == NUMBER ||
 				!(element instanceof Array ) && element instanceof Object && (
-					child.name == _b.NUMBER ||
-					child.name == _b.STRING
+					child.name == NUMBER ||
+					child.name == STRING
 				)
 			) {
 				// Single element
@@ -1200,7 +1300,7 @@ var DEV = true;
 			return output.push(ret);
 		},
 		'if': function( input, output, argument ) {
-			if( argument && argument.name == _b.LIST && argument.children.length >= 2 ) {
+			if( argument && argument.name == LIST && argument.children.length >= 2 ) {
 				var children = argument.children
 					, input = [input] // <-- ATTENTION
 					, exp = _expression(input, [], children[0])
@@ -1218,7 +1318,7 @@ var DEV = true;
 			return;
 		},
 		'format': function( input, output, argument ) {
-			if( !(input instanceof Array) || !argument || argument.name != _b.STRING )
+			if( !(input instanceof Array) || !argument || argument.name != STRING )
 				return;
 			
 			input = input.slice(0);
@@ -1261,7 +1361,7 @@ var DEV = true;
 			});
 		},
 		'recurse': function( input, output, argument, level ) {
-			if( argument && argument.name == _b.FILTER ) {
+			if( argument && argument.name == FILTER ) {
 				if( !level ) {
 					input = [input];
 					level = 0;
@@ -1282,6 +1382,12 @@ var DEV = true;
 			});
 			if( !result )
 				output.push(input);
+		},
+		'sort': function( input, output, argument ) {
+			if( !(input instanceof Array) )
+				_error('sort: Can only sort arrays');
+			
+			output.push(input.sort(_compare));
 		},
 		'tonumber': function( input, output, argument, undefined ) {
 			if( argument )
@@ -1307,6 +1413,18 @@ var DEV = true;
 					exp[i] != undefined && output.push(JSON.stringify(exp[i]));
 				}
 			}
+		},
+		'unique': function( input, output ) {
+			var i = -1
+				, len = input.length
+				, result = [];
+			
+			while( ++i < len ) {
+				var value = input[i];
+				if( _indexOf(result, value) < 0 )
+					result.push(value);
+			}
+			output.push(result);
 		}
 	};
 	
