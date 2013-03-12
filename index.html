@@ -304,6 +304,213 @@ from the first object.</li>
 			<hr/>
 		</section>
 		<section>
+			<h2><p>Assignment</p>
+</h2>
+			<p>Assignment works a little differently in jsq than in most
+programming languages. jsq doesn&#39;t distinguish between references
+to and copies of something - two objects or arrays are either
+equal or not equal, without any further notion of being &quot;the
+same object&quot; or &quot;not the same object&quot;.</p>
+<p>If an object has two fields which are arrays, <code>.foo</code> and <code>.bar</code>,
+and you append something to <code>.foo</code>, then <code>.bar</code> will not get
+bigger. Even if you&#39;ve just set <code>.bar = .foo</code>. If you&#39;re used to
+programming in languages like Python, Java, Ruby, Javascript,
+etc. then you can think of it as though jsq does a full deep copy
+of every object before it does the assignment (for performance,
+it doesn&#39;t actually do that, but that&#39;s the general idea).</p>
+
+			
+			<div>
+				<h3><p><code>=</code></p>
+</h3>
+				<p>The filter <code>.foo = 1</code> will take as input an object
+and produce as output an object with the &quot;foo&quot; field set to
+1. There is no notion of &quot;modifying&quot; or &quot;changing&quot; something
+in jsq - all jsq values are immutable. For instance,</p>
+<pre><code class="lang-jsq">.foo = .bar | .foo.baz = 1</code></pre>
+<p>will not have the side-effect of setting .bar.baz to be set
+to 1, as the similar-looking program in Javascript, Python,
+Ruby or other languages would. Unlike these languages (but
+like Haskell and some other functional languages), there is
+no notion of two arrays or objects being &quot;the same array&quot; or
+&quot;the same object&quot;. They can be equal, or not equal, but if
+we change one of them in no circumstances will the other
+change behind our backs.</p>
+<p>This means that it&#39;s impossible to build circular values in
+jsq (such as an array whose first element is itself). This is
+quite intentional, and ensures that anything a jsq program
+can produce can be represented in JSON.</p>
+
+			</div>
+			<div>
+				<h3><p><code>|=</code></p>
+</h3>
+				<p>As well as the assignment operator &#39;=&#39;, jsq provides the &quot;update&quot;
+operator &#39;|=&#39;, which takes a filter on the right-hand side and
+works out the new value for the property being assigned to by running
+the old value through this expression. For instance, .foo |= .+1 will
+build an object with the &quot;foo&quot; field set to the input&#39;s &quot;foo&quot; plus 1.</p>
+<p>This example should show the difference between &#39;=&#39; and &#39;|=&#39;. Provide input</p>
+<pre><code class="lang-javascript">{&quot;a&quot;: {&quot;b&quot;: 10}, &quot;b&quot;: 20}</code></pre>
+<p>to the programs <code>.a = .b</code> and <code>.a |= .b</code></p>
+<p>The former will set the &quot;a&quot; field of the input to the &quot;b&quot; field of the
+input, and produce the output {&quot;a&quot;: 20}. The latter will set the &quot;a&quot;
+field of the input to the &quot;a&quot; field&#39;s &quot;b&quot; field, producing {&quot;a&quot;: 10}.</p>
+
+			</div>
+			<div>
+				<h3><p><code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code></p>
+</h3>
+				<p>jsq has a few operators of the form <code>a op= b</code>, which are all
+equivalent to <code>a |= . op b</code>. So, <code>+= 1</code> can be used to increment values.</p>
+
+			</div>
+			<div>
+				<h3><p>Complex assignments</p>
+</h3>
+				<p>Lots more things are allowed on the left-hand side of a jsq assignment
+than in most langauges. We&#39;ve already seen simple field accesses on
+the left hand side, and it&#39;s no surprise that array accesses work just
+as well:</p>
+<pre><code class="lang-jsq">.posts[0].title = &quot;JSQ Manual&quot;</code></pre>
+<p>What may come as a surprise is that the expression on the left may
+produce multiple results, referring to different points in the input
+document:</p>
+<pre><code class="lang-jsq">.posts[].comments |= . + [&quot;this is great&quot;]</code></pre>
+<p>That example appends the string &quot;this is great&quot; to the &quot;comments&quot;
+array of each post in the input (where the input is an object with a
+field &quot;posts&quot; which is an array of posts).</p>
+<p>When jsq encounters an assignment like &#39;a = b&#39;, it records the &quot;path&quot;
+taken to select a part of the input document while executing a. This
+path is then used to find which part of the input to change while
+executing the assignment. Any filter may be used on the
+left-hand side of an equals - whichever paths it selects from the
+input will be where the assignment is performed.</p>
+<p>This is a very powerful operation. Suppose we wanted to add a comment
+to blog posts, using the same &quot;blog&quot; input above. This time, we only
+want to comment on the posts written by &quot;tjoekbezoer&quot;. We can find those
+posts using the &quot;select&quot; function described earlier:</p>
+<pre><code class="lang-jsq">.posts[] | select(.author == &quot;tjoekbezoer&quot;)</code></pre>
+<p>The paths provided by this operation point to each of the posts that
+&quot;tjoekbezoer&quot; wrote, and we can comment on each of them in the same way
+that we did before:</p>
+<pre><code class="lang-jsq">(.posts[] | select(.author == &quot;tjoekbezoer&quot;) | .comments) |= . + [&quot;terrible.&quot;]</code></pre>
+
+			</div>
+			
+			<hr/>
+		</section>
+		<section>
+			<h2><p>Conditionals and Comparisons</p>
+</h2>
+			
+			
+			<div>
+				<h3><p><code>==</code>, <code>===</code>, <code>!=</code></p>
+</h3>
+				<p><strong>UNDONE</strong><br>The expression &#39;a == b&#39; will produce &#39;true&#39; if the result of a and b
+are equal (that is, if they represent equivalent JSON documents) and
+&#39;false&#39; otherwise. In particular, strings are never considered equal
+to numbers. If you&#39;re coming from Javascript, jsq&#39;s == is like
+Javascript&#39;s === - considering values equal only when they have the
+same type as well as the same value.</p>
+<p>!= is &quot;not equal&quot;, and &#39;a != b&#39; returns the opposite value of &#39;a == b&#39;</p>
+
+			</div>
+			<div>
+				<h3><p><code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code></p>
+</h3>
+				<p><strong>UNDONE</strong><br>The comparison operators <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code> behave as expected. Additionaly, it can be
+used to compare arrays and objects.</p>
+<p>The ordering is the same as that described for <code>sort</code>, above.</p>
+
+			</div>
+			<div>
+				<h3><p><code>if(cond, then[, else])</code></p>
+</h3>
+				<p><strong>UNDONE</strong><br><code>if(A, B, C)</code> will execute <code>B</code> if <code>A</code> evaluates as truthy, otherwise it will optionally
+execute <code>C</code>.</p>
+<p>Checking for false or null is a simpler notion of
+&quot;truthiness&quot; than is found in Javascript or Python, but it
+means that you&#39;ll sometimes have to be more explicit about
+the condition you want: you can&#39;t test whether, e.g. a
+string is empty using <code>if .name then A else B end</code>, you&#39;ll
+need something more like <code>if (.name | count) &gt; 0 then A else
+B end</code> instead.</p>
+<p>If the condition A produces multiple results, it is
+considered &quot;true&quot; if any of those results is not false or
+null. If it produces zero results, it&#39;s considered false.</p>
+
+			</div>
+			<div>
+				<h3><p><code>&amp;&amp;</code>, <code>||</code>, <code>!</code></p>
+</h3>
+				<p>jsq supports the normal Boolean operators <code>&amp;&amp;</code> and <code>||</code>. They have the
+same standard of truth as <code>if</code> expressions - <code>false</code> and <code>null</code> are
+considered &quot;false values&quot;, and anything else is a &quot;true value&quot;.</p>
+<p>If an operand of one of these operators produces multiple
+results, the operator itself will produce a result for each input.</p>
+<p>The boolean operators behave the same as JavaScript&#39;s, returning the value of the last
+correct operand. So for example <code>0 &amp;&amp; 2</code> returns <code>2</code>; <code>!1 || 3</code> returns <code>3</code>.</p>
+<p><code>!</code> simply negates the proceding value.</p>
+
+			</div>
+			
+			<hr/>
+		</section>
+		<section>
+			<h2><p>Variables</p>
+</h2>
+			<p>In jsq, all filters have an input and an output, so manual
+plumbing is not necessary to pass a value from one part of a program
+to the next. Many expressions, for instance <code>a + b</code>, pass their input
+to two distinct subexpressions (here <code>a</code> and <code>b</code> are both passed the
+same input), so variables aren&#39;t usually necessary in order to use a
+value twice.</p>
+<p>For instance, calculating the average value of an array of numbers
+requires a few variables in most languages - at least one to hold the
+array, perhaps one for each element or for a loop counter. In jsq, it&#39;s
+simply <code>add / length</code> - the <code>add</code> expression is given the array and
+produces its sum, and the <code>length</code> expression is given the array and
+produces its length.</p>
+<p>So, there&#39;s generally a cleaner way to solve most problems in jsq that
+defining variables. Still, sometimes they do make things easier, so jsq
+lets you define variables using <code>expression as $variable</code>. All
+variable names start with <code>$</code>. Here&#39;s a slightly uglier version of the
+array-averaging example:</p>
+<pre><code class="lang-jsq">length as $array_length | add / $array_length</code></pre>
+<p>We&#39;ll need a more complicated problem to find a situation where using
+variables actually makes our lives easier.</p>
+<p>Suppose we have an array of blog posts, with &quot;author&quot; and &quot;title&quot;
+fields, and another object which is used to map author usernames to
+real names. Our input looks like:</p>
+<pre><code class="lang-javascript">{
+  &quot;posts&quot;: [
+    {&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;anon&quot;},
+    {&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;person1&quot;}],
+  &quot;realnames&quot;: {
+    &quot;anon&quot;: &quot;Anonymous Coward&quot;,
+    &quot;person1&quot;: &quot;Person McPherson&quot;
+  }
+}</code></pre>
+<p>We want to produce the posts with the author field containing a real
+name, as in:</p>
+<pre><code class="lang-javascript">[
+  {&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;Anonymous Coward&quot;},
+  {&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;Person McPherson&quot;}
+]</code></pre>
+<p>We use a variable, $names, to store the realnames object, so that we
+can refer to it later when looking up author usernames:</p>
+<pre><code class="lang-jsq">.realnames as $names | .posts[] | {title, author: $names[.author]}</code></pre>
+<p>The expression &quot;foo as $x&quot; runs foo, puts the result in $x,
+and returns the original input. Apart from the side-effect
+of binding the variable, it has the same effect as &quot;.&quot;.</p>
+
+			
+			
+			<hr/>
+		</section>
+		<section>
 			<h2><p>Builtin functions</p>
 </h2>
 			<p>Jsq comes with a set of builtin functions that allow you to perform extra operations on your
@@ -403,6 +610,30 @@ need to include <a href="https://github.com/douglascrockford/JSON-js">json2.js</
 
 			</div>
 			<div>
+				<h3><p><code>sort</code>, <code>sort_by</code></p>
+</h3>
+				<p>The <code>sort</code> function sorts its input, which must be an
+array. Values are sorted in the following order:</p>
+<ul>
+<li><code>null</code></li>
+<li><code>false</code></li>
+<li><code>true</code></li>
+<li>numbers</li>
+<li>strings, in alphabetical order (by unicode codepoint value)</li>
+<li>arrays, in lexical order</li>
+<li>objects</li>
+</ul>
+<p>The ordering for objects is a little complex: first they&#39;re
+compared by comparing their sets of keys (as arrays in
+sorted order), and if their keys are equal then the values
+are compared key by key.</p>
+<p><code>sort_by</code> may be used to sort by a particular field of an
+object, or by applying any jsq filter. <code>sort_by(foo)</code>
+compares two elements by comparing the result of <code>foo</code> on
+each element.</p>
+
+			</div>
+			<div>
 				<h3><p><code>min</code>, <code>max</code></p>
 </h3>
 				<p>Find the minimum or maximum element of the input array. Providing a filter as argument
@@ -439,226 +670,6 @@ with:</p>
 </h3>
 				<p>Much like a simplified sprintf, <code>format</code> accepts an array of values to be integrated
 into a custom string.</p>
-
-			</div>
-			
-			<hr/>
-		</section>
-		<section>
-			<h2><p>Conditionals and Comparisons</p>
-</h2>
-			
-			
-			<div>
-				<h3><p><code>==</code>, <code>===</code>, <code>!=</code></p>
-</h3>
-				<p><strong>UNDONE</strong><br>The expression &#39;a == b&#39; will produce &#39;true&#39; if the result of a and b
-are equal (that is, if they represent equivalent JSON documents) and
-&#39;false&#39; otherwise. In particular, strings are never considered equal
-to numbers. If you&#39;re coming from Javascript, jsq&#39;s == is like
-Javascript&#39;s === - considering values equal only when they have the
-same type as well as the same value.</p>
-<p>!= is &quot;not equal&quot;, and &#39;a != b&#39; returns the opposite value of &#39;a == b&#39;</p>
-
-			</div>
-			<div>
-				<h3><p><code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code></p>
-</h3>
-				<p><strong>UNDONE</strong><br>The comparison operators <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code> behave as expected. Additionaly, it can be
-used to compare arrays and objects.</p>
-<p>The ordering is the same as that described for <code>sort</code>, above.</p>
-
-			</div>
-			<div>
-				<h3><p><code>if(cond, then[, else])</code></p>
-</h3>
-				<p><strong>UNDONE</strong><br><code>if(A, B, C)</code> will execute <code>B</code> if <code>A</code> evaluates as truthy, otherwise it will optionally
-execute <code>C</code>.</p>
-<p>Checking for false or null is a simpler notion of
-&quot;truthiness&quot; than is found in Javascript or Python, but it
-means that you&#39;ll sometimes have to be more explicit about
-the condition you want: you can&#39;t test whether, e.g. a
-string is empty using <code>if .name then A else B end</code>, you&#39;ll
-need something more like <code>if (.name | count) &gt; 0 then A else
-B end</code> instead.</p>
-<p>If the condition A produces multiple results, it is
-considered &quot;true&quot; if any of those results is not false or
-null. If it produces zero results, it&#39;s considered false.</p>
-
-			</div>
-			<div>
-				<h3><p><code>&amp;&amp;</code>, <code>||</code>, <code>!</code></p>
-</h3>
-				<p>jsq supports the normal Boolean operators <code>&amp;&amp;</code> and <code>||</code>. They have the
-same standard of truth as <code>if</code> expressions - <code>false</code> and <code>null</code> are
-considered &quot;false values&quot;, and anything else is a &quot;true value&quot;.</p>
-<p>If an operand of one of these operators produces multiple
-results, the operator itself will produce a result for each input.</p>
-<p>The boolean operators behave the same as JavaScript&#39;s, returning the value of the last
-correct operand. So for example <code>0 &amp;&amp; 2</code> returns <code>2</code>; <code>!1 || 3</code> returns <code>3</code>.</p>
-<p><code>!</code> simply negates the proceding value.</p>
-
-			</div>
-			
-			<hr/>
-		</section>
-		<section>
-			<h2><p>Advanced features</p>
-</h2>
-			<p>Variables are an absolute necessity in most programming languages, but
-they&#39;re relegated to an &quot;advanced feature&quot; in jsq.</p>
-<p>In most languages, variables are the only means of passing around
-data. If you calculate a value, and you want to use it more than once,
-you&#39;ll need to store it in a variable. To pass a value to another part
-of the program, you&#39;ll need that part of the program to define a
-variable (as a function parameter, object member, or whatever) in
-which to place the data.</p>
-
-			
-			<div>
-				<h3><p>Variables</p>
-</h3>
-				<p>In jsq, all filters have an input and an output, so manual
-plumbing is not necessary to pass a value from one part of a program
-to the next. Many expressions, for instance <code>a + b</code>, pass their input
-to two distinct subexpressions (here <code>a</code> and <code>b</code> are both passed the
-same input), so variables aren&#39;t usually necessary in order to use a
-value twice.</p>
-<p>For instance, calculating the average value of an array of numbers
-requires a few variables in most languages - at least one to hold the
-array, perhaps one for each element or for a loop counter. In jsq, it&#39;s
-simply <code>add / length</code> - the <code>add</code> expression is given the array and
-produces its sum, and the <code>length</code> expression is given the array and
-produces its length.</p>
-<p>So, there&#39;s generally a cleaner way to solve most problems in jsq that
-defining variables. Still, sometimes they do make things easier, so jsq
-lets you define variables using <code>expression as $variable</code>. All
-variable names start with <code>$</code>. Here&#39;s a slightly uglier version of the
-array-averaging example:</p>
-<pre><code class="lang-jsq">length as $array_length | add / $array_length</code></pre>
-<p>We&#39;ll need a more complicated problem to find a situation where using
-variables actually makes our lives easier.</p>
-<p>Suppose we have an array of blog posts, with &quot;author&quot; and &quot;title&quot;
-fields, and another object which is used to map author usernames to
-real names. Our input looks like:</p>
-<pre><code class="lang-javascript">{
-  &quot;posts&quot;: [
-    {&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;anon&quot;},
-    {&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;person1&quot;}],
-  &quot;realnames&quot;: {
-    &quot;anon&quot;: &quot;Anonymous Coward&quot;,
-    &quot;person1&quot;: &quot;Person McPherson&quot;
-  }
-}</code></pre>
-<p>We want to produce the posts with the author field containing a real
-name, as in:</p>
-<pre><code class="lang-javascript">[
-  {&quot;title&quot;: &quot;Frist psot&quot;, &quot;author&quot;: &quot;Anonymous Coward&quot;},
-  {&quot;title&quot;: &quot;A well-written article&quot;, &quot;author&quot;: &quot;Person McPherson&quot;}
-]</code></pre>
-<p>We use a variable, $names, to store the realnames object, so that we
-can refer to it later when looking up author usernames:</p>
-<pre><code class="lang-jsq">.realnames as $names | .posts[] | {title, author: $names[.author]}</code></pre>
-<p>The expression &quot;foo as $x&quot; runs foo, puts the result in $x,
-and returns the original input. Apart from the side-effect
-of binding the variable, it has the same effect as &quot;.&quot;.</p>
-
-			</div>
-			
-			<hr/>
-		</section>
-		<section>
-			<h2><p>Assignment</p>
-</h2>
-			<p>Assignment works a little differently in jsq than in most
-programming languages. jsq doesn&#39;t distinguish between references
-to and copies of something - two objects or arrays are either
-equal or not equal, without any further notion of being &quot;the
-same object&quot; or &quot;not the same object&quot;.</p>
-<p>If an object has two fields which are arrays, <code>.foo</code> and <code>.bar</code>,
-and you append something to <code>.foo</code>, then <code>.bar</code> will not get
-bigger. Even if you&#39;ve just set <code>.bar = .foo</code>. If you&#39;re used to
-programming in languages like Python, Java, Ruby, Javascript,
-etc. then you can think of it as though jsq does a full deep copy
-of every object before it does the assignment (for performance,
-it doesn&#39;t actually do that, but that&#39;s the general idea).</p>
-
-			
-			<div>
-				<h3><p><code>=</code></p>
-</h3>
-				<p>The filter <code>.foo = 1</code> will take as input an object
-and produce as output an object with the &quot;foo&quot; field set to
-1. There is no notion of &quot;modifying&quot; or &quot;changing&quot; something
-in jsq - all jsq values are immutable. For instance,</p>
-<pre><code class="lang-jsq">.foo = .bar | .foo.baz = 1</code></pre>
-<p>will not have the side-effect of setting .bar.baz to be set
-to 1, as the similar-looking program in Javascript, Python,
-Ruby or other languages would. Unlike these languages (but
-like Haskell and some other functional languages), there is
-no notion of two arrays or objects being &quot;the same array&quot; or
-&quot;the same object&quot;. They can be equal, or not equal, but if
-we change one of them in no circumstances will the other
-change behind our backs.</p>
-<p>This means that it&#39;s impossible to build circular values in
-jsq (such as an array whose first element is itself). This is
-quite intentional, and ensures that anything a jsq program
-can produce can be represented in JSON.</p>
-
-			</div>
-			<div>
-				<h3><p><code>|=</code></p>
-</h3>
-				<p>As well as the assignment operator &#39;=&#39;, jsq provides the &quot;update&quot;
-operator &#39;|=&#39;, which takes a filter on the right-hand side and
-works out the new value for the property being assigned to by running
-the old value through this expression. For instance, .foo |= .+1 will
-build an object with the &quot;foo&quot; field set to the input&#39;s &quot;foo&quot; plus 1.</p>
-<p>This example should show the difference between &#39;=&#39; and &#39;|=&#39;. Provide input</p>
-<pre><code class="lang-javascript">{&quot;a&quot;: {&quot;b&quot;: 10}, &quot;b&quot;: 20}</code></pre>
-<p>to the programs <code>.a = .b</code> and <code>.a |= .b</code></p>
-<p>The former will set the &quot;a&quot; field of the input to the &quot;b&quot; field of the
-input, and produce the output {&quot;a&quot;: 20}. The latter will set the &quot;a&quot;
-field of the input to the &quot;a&quot; field&#39;s &quot;b&quot; field, producing {&quot;a&quot;: 10}.</p>
-
-			</div>
-			<div>
-				<h3><p><code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code></p>
-</h3>
-				<p>jsq has a few operators of the form <code>a op= b</code>, which are all
-equivalent to <code>a |= . op b</code>. So, <code>+= 1</code> can be used to increment values.</p>
-
-			</div>
-			<div>
-				<h3><p>Complex assignments</p>
-</h3>
-				<p>Lots more things are allowed on the left-hand side of a jsq assignment
-than in most langauges. We&#39;ve already seen simple field accesses on
-the left hand side, and it&#39;s no surprise that array accesses work just
-as well:</p>
-<pre><code class="lang-jsq">.posts[0].title = &quot;JSQ Manual&quot;</code></pre>
-<p>What may come as a surprise is that the expression on the left may
-produce multiple results, referring to different points in the input
-document:</p>
-<pre><code class="lang-jsq">.posts[].comments |= . + [&quot;this is great&quot;]</code></pre>
-<p>That example appends the string &quot;this is great&quot; to the &quot;comments&quot;
-array of each post in the input (where the input is an object with a
-field &quot;posts&quot; which is an array of posts).</p>
-<p>When jsq encounters an assignment like &#39;a = b&#39;, it records the &quot;path&quot;
-taken to select a part of the input document while executing a. This
-path is then used to find which part of the input to change while
-executing the assignment. Any filter may be used on the
-left-hand side of an equals - whichever paths it selects from the
-input will be where the assignment is performed.</p>
-<p>This is a very powerful operation. Suppose we wanted to add a comment
-to blog posts, using the same &quot;blog&quot; input above. This time, we only
-want to comment on the posts written by &quot;tjoekbezoer&quot;. We can find those
-posts using the &quot;select&quot; function described earlier:</p>
-<pre><code class="lang-jsq">.posts[] | select(.author == &quot;tjoekbezoer&quot;)</code></pre>
-<p>The paths provided by this operation point to each of the posts that
-&quot;tjoekbezoer&quot; wrote, and we can comment on each of them in the same way
-that we did before:</p>
-<pre><code class="lang-jsq">(.posts[] | select(.author == &quot;tjoekbezoer&quot;) | .comments) |= . + [&quot;terrible.&quot;]</code></pre>
 
 			</div>
 			
