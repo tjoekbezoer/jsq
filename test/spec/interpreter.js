@@ -166,6 +166,8 @@
 		deepEqual(jsq(complex, '.[]'), jsq(complex, '. | .[]'));
 		deepEqual(jsq(complex, '.fifth[]'), jsq(complex, '.fifth | .[]'));
 		
+		eq('empty | 1', [1], 'Piping an empty result');
+		
 		eq(complex2, '.[] | .first | add', [6,15], 'Multiple pipes');
 		eq(complex2, '.[] | (.first | add)', [6,15], 'Multiple pipes but nested with parentheses yields same result');
 	});

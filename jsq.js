@@ -1011,7 +1011,7 @@ var DEV = true;
 		'xor': function( l, r ) { return l ^ r }
 	};
 	function _expression( input, output, branch ) {
-		var col, i, result;
+		var col, i, result, len;
 		
 		switch( branch.name ) {
 			case ASSIGNMENT:
@@ -1054,9 +1054,11 @@ var DEV = true;
 				break;
 			case PIPE:
 				input = _expression(input, output, branch.children[0]);
-				input = input.splice(0,input.length);
-				for( i=0; i<input.length; i++ )
-					_expression([input[i]], output, branch.children[1]);
+				len = input.length;
+				input = input.splice(0,len);
+				// Run rhs of the pipe, even if lhs produces no results.
+				for( i=0; i<len || i+len==0; i++ )
+					_expression(len>0 ? [input[i]] : [], output, branch.children[1]);
 				break;
 			case UNARY:
 				_unary(input, output, branch);
