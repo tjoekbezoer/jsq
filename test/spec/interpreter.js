@@ -318,6 +318,12 @@
 			},
 			'third': null
 		}], 'Assigning to an unknown key creates it and sets it to null');
+		
+		// Shorthand assignment operators
+		eq(input1, '.first += 1', [{'first':2, 'second':2}], 'Shorthand addition');
+		eq(input1, '.first -= 1', [{'first':0, 'second':2}], 'Shorthand subtraction');
+		eq(input1, '.first *= 3', [{'first':3, 'second':2}], 'Shorthand multiplication');
+		eq(input1, '.second /= 2', [{'first':1, 'second':1}], 'Shorthand division');
 	});
 	
 	
