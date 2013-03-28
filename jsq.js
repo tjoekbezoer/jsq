@@ -487,7 +487,9 @@ var DEV = true;
 					// Shorthand op for x |= . op filter
 					this.addup(OPERATOR).val = '|='
 					this.add(BINARY);
-					this.addup(FILTER);
+					this.add(FILTER);
+					this.addup(TARGET).val = '.';
+					this.up();
 					this.addup(OPERATOR).val = opToken.val.substr(0,1);
 					this.parse();
 					this.up();
