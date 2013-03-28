@@ -1086,22 +1086,24 @@ var DEV = true;
 			// Value assignment to filter.
 			var op = children[1].val,
 					inputCopy = _copy(input),
-					exp;
+					exp, res;
 			
 			if( op == '=' ) {
 				// Simple assignment. Take the result from the rhs expression, and assign
 				// it to elements resulting from the lhs filter. Is the rhs expression produces
 				// multiple results, use the last.
-				exp = _expression(input, [], children[2]).pop() || null;
+				exp = _expression(input, [], children[2]).pop();
+				res = exp != void(0) ? exp : null;
 				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
-					obj[key] = exp;
+					obj[key] = res;
 				});
 			} else if( op == '|=' ) {
 				// 'Update' assignment. Use the lhs filter as input to evaluate the rhs expression, and
 				// assign the result to the elements resulting from the lhs filter.
 				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
-					exp = _expression([obj[key]], [], children[2]).pop() || null;
-					obj[key] = exp;
+					exp = _expression([obj[key]], [], children[2]).pop();
+					res = exp != void(0) ? exp : null;
+					obj[key] = res;
 				});
 			}
 			
