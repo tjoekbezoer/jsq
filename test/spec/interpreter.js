@@ -49,7 +49,7 @@
 	
 	
 	
-	module('Interpreter');
+	QUnit.module('Interpreter');
 	test('executes unary operations correctly', function() {
 		eq('-1, ~1, !1, -2', [-1,-2,false,-2]);
 		eq('1--1', [2]);
@@ -327,7 +327,7 @@
 	});
 	
 	
-	module('Standard functions');
+	QUnit.module('Standard functions');
 	test('add', function() {
 		eq('[1,2,3] | add', [6]);
 	});

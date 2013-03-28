@@ -1,0 +1,14 @@
+#!/usr/bin/env node
+
+var qunit = require('qunit');
+
+qunit.options.log.assertions = false;
+qunit.options.log.summary = false;
+
+qunit.run({
+	code: '../jsq.js',
+	tests: [
+		'../test/spec/jsq.js',
+		'../test/spec/interpreter.js'
+	]
+});

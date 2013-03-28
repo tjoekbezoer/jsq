@@ -1,0 +1,35 @@
+{
+  "name": "jsq",
+  "version": "0.1.0",
+  "description": "Take control of your JSON; slice, filter, map, transform, calculate — it's up to you. All in a purpose-designed, simple language.",
+  "main": "jsq.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://tjoekbezoer@github.com/tjoekbezoer/jsq.git"
+  },
+  "keywords": [
+    "jsq",
+    "json",
+    "query",
+    "filter",
+    "objects",
+    "parser"
+  ],
+  "author": "Daan Mortier",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "gitHead": "c18acc178a51a588556464d245a2b4e02e8d1ac8",
+  "devDependencies": {
+    "qunit": "~0.5.16",
+    "js-yaml": "~2.0.3",
+    "marked": "~0.2.8",
+    "mustache": "~0.7.2"
+  }
+}

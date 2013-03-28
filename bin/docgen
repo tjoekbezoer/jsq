@@ -24,10 +24,10 @@ marked.setOptions({
 // from the ./templates folder. Then write the resulting HTML file to
 // the ./output folder.
 var dirname = path.dirname(require.main.filename)
-	, files = fs.readdirSync(path.resolve(dirname, 'pages'));
+	, files = fs.readdirSync(path.resolve(dirname, '../docs/pages'));
 
 files.forEach(function( fileName ) {
-	var yamlFile = path.resolve(dirname, 'pages', fileName)
+	var yamlFile = path.resolve(dirname, '../docs/pages', fileName)
 		, stat = fs.statSync(yamlFile)
 		, data, _fileName, templateFileName, outputFileName, output;
 	
@@ -37,8 +37,8 @@ files.forEach(function( fileName ) {
 		// Get filename without extension.
 		_fileName = fileName;
 		fileName = fileName.split('.').slice(0,-1).join('.');
-		templateFileName = path.resolve(dirname, 'templates/'+fileName+'.tpl');
-		outputFileName = path.resolve(dirname, 'output/'+fileName+'.html');
+		templateFileName = path.resolve(dirname, '../docs/templates/'+fileName+'.tpl');
+		outputFileName = path.resolve(dirname, '../docs/output/'+fileName+'.html');
 		
 		// Parse template and write result.
 		if( fs.existsSync(templateFileName) ) {
