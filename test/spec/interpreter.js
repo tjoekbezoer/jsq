@@ -367,6 +367,10 @@
 		eq(multiple, 'min(.first)', [{first:1, second:2, third: 3}]);
 	});
 	
+	test('not', function() {
+		eq([0,1,null,[],{}], '.[] | not', [true,false,true,false,false]);
+	});
+	
 	test('pairs', function() {
 		eq(multiple, '.[1] | pairs', [['first',4], ['second',5]]);
 	});

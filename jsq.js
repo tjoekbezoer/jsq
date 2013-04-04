@@ -1361,6 +1361,9 @@ var DEV = true;
 		'min': function( input, output, argument ) {
 			output.push(_extreme('min', input, argument));
 		},
+		'not': function( input, output ) {
+			output.push(!input);
+		},
 		'pairs': function( input, output ) {
 			_each(input, function( val, key ) {
 				output.push([key, val]);
