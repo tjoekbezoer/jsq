@@ -1,4 +1,4 @@
-module('jsq function');
+QUnit.module('jsq function');
 test('runs with all argument combinations', function() {
 	deepEqual(jsq(), [], 'No arguments');
 	

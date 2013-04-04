@@ -111,6 +111,7 @@ var DEV = true;
 		return	typeof mixed == 'number' && 'number' ||
 						typeof mixed == 'string' && 'string' ||
 						typeof mixed == 'boolean' && 'boolean' ||
+						typeof mixed == 'undefined' && 'undefined' ||
 						false;
 	}
 	// Replaces %# in a string with the (#+1)th argument.
@@ -292,7 +293,7 @@ var DEV = true;
 			// This line is based on the fact that `token` will always return an array like
 			// [matched string, [subpattern, ...]], so in this case 11 elements after the
 			// matched string.
-			i = 0; while( ++i<=14 && token[i]==void(0) ){}
+			i = 0; while( ++i<=14 && token[i]===void(0) ){}
 			if( i == _t.str )
 				token[0] = token[0].slice(1,-1);
 			// Add token.
@@ -487,7 +488,9 @@ var DEV = true;
 					// Shorthand op for x |= . op filter
 					this.addup(OPERATOR).val = '|='
 					this.add(BINARY);
-					this.addup(FILTER);
+					this.add(FILTER);
+					this.addup(TARGET).val = '.';
+					this.up();
 					this.addup(OPERATOR).val = opToken.val.substr(0,1);
 					this.parse();
 					this.up();
@@ -1011,7 +1014,7 @@ var DEV = true;
 		'xor': function( l, r ) { return l ^ r }
 	};
 	function _expression( input, output, branch ) {
-		var col, i, result;
+		var col, i, result, len;
 		
 		switch( branch.name ) {
 			case ASSIGNMENT:
@@ -1054,9 +1057,11 @@ var DEV = true;
 				break;
 			case PIPE:
 				input = _expression(input, output, branch.children[0]);
-				input = input.splice(0,input.length);
-				for( i=0; i<input.length; i++ )
-					_expression([input[i]], output, branch.children[1]);
+				len = input.length;
+				input = input.splice(0,len);
+				// Run rhs of the pipe, even if lhs produces no results.
+				for( i=0; i<len || i+len==0; i++ )
+					_expression(len>0 ? [input[i]] : [], output, branch.children[1]);
 				break;
 			case UNARY:
 				_unary(input, output, branch);
@@ -1082,22 +1087,24 @@ var DEV = true;
 			// Value assignment to filter.
 			var op = children[1].val,
 					inputCopy = _copy(input),
-					exp;
+					exp, res;
 			
 			if( op == '=' ) {
 				// Simple assignment. Take the result from the rhs expression, and assign
 				// it to elements resulting from the lhs filter. Is the rhs expression produces
 				// multiple results, use the last.
-				exp = _expression(input, [], children[2]).pop() || null;
+				exp = _expression(input, [], children[2]).pop();
+				res = exp !== void(0) ? exp : null;
 				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
-					obj[key] = exp;
+					obj[key] = res;
 				});
 			} else if( op == '|=' ) {
 				// 'Update' assignment. Use the lhs filter as input to evaluate the rhs expression, and
 				// assign the result to the elements resulting from the lhs filter.
 				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
-					exp = _expression([obj[key]], [], children[2]).pop() || null;
-					obj[key] = exp;
+					exp = _expression([obj[key]], [], children[2]).pop();
+					res = exp !== void(0) ? exp : null;
+					obj[key] = res;
 				});
 			}
 			
@@ -1116,7 +1123,7 @@ var DEV = true;
 		// No callback? Then perform default action: returning found value as result.
 		if( !callback ) {
 			callback = function( val, key, obj ) {
-				val != void(0) && output.push(val);
+				val !== void(0) && output.push(val);
 			};
 		}
 		
@@ -1134,7 +1141,7 @@ var DEV = true;
 		for( j=0; j<input.length; j++ ) {
 			element = input[j];
 			// When querying for sub-sub-keys, the result can be undefined at the first sub-key.
-			if( element == void(0) ) continue;
+			if( element === void(0) ) continue;
 			
 			// TODO: `range` as key selector for arrays
 			if( !child ) {
@@ -1354,6 +1361,9 @@ var DEV = true;
 		},
 		'min': function( input, output, argument ) {
 			output.push(_extreme('min', input, argument));
+		},
+		'not': function( input, output ) {
+			output.push(!input);
 		},
 		'pairs': function( input, output ) {
 			_each(input, function( val, key ) {

@@ -1,5 +1,5 @@
 
-module('Lexer');
+QUnit.module('Lexer');
 
 test('is constructable without query', function() {
 	var lexer = new jsq.Lexer();

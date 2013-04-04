@@ -44,10 +44,12 @@
 			input = [];
 		}
 		
-		deepEqual(jsq(input, query), result, title);
+		deepEqual(jsq(input, query), result, title||query);
 	}
 	
-	module('Interpreter');
+	
+	
+	QUnit.module('Interpreter');
 	test('executes unary operations correctly', function() {
 		eq('-1, ~1, !1, -2', [-1,-2,false,-2]);
 		eq('1--1', [2]);
@@ -81,13 +83,44 @@
 		eq('1&&2, 2&&1, 1 && 2, 1	&&	2', [2,1,2,2]);
 		eq('1&&0, 0&&1', [0,0]);
 		eq('1||2, 2||1, 1||0', [1,2,1]);
-		eq('1==1, 2!=1, 2>1, 2>=1, 1>=1, 1<2, 1<=2, 1<=1', [true,true,true,true,true,true,true,true]);
-		eq('2==1, 1!=1, 1>2, 1>=2, 2<1, 2<=1', [false,false,false,false,false,false]);
-		eq('"1"==1, "1"===1', [true,false]);
 		// Precedence
 		eq('1||2&&3', [1]);
 		eq('(1||2)&&3', [3]);
 		eq('0||2&&3', [3]);
+		// Comparing
+		eq('1==1, 2!=1, 2>1, 2>=1, 1>=1, 1<2, 1<=2, 1<=1', [true,true,true,true,true,true,true,true]);
+		eq('2==1, 1!=1, 1>2, 1>=2, 2<1, 2<=1', [false,false,false,false,false,false]);
+		eq('"foo"=="foo", "foo">"bar", "foo1">"foo"', [true,true,true]);
+		eq('""==false', [true]);
+		eq('"1"==1, "1"===1', [true,false]);
+		eq('1>"0", "0"<"1"', [true,true]);
+		// Comparing arrays
+		eq('[1,2]==[1,2], [1,2]==[1,3], [1,2]==[2,1]', [true,false,false]);
+		eq('[1,2]>=[1,2], [1,3]>=[1,2], [1,2,3]>=[4,5]', [true,true,true]);
+		eq('[1,2]<=[1,2], [1,2]<=[1,3], [4,5]<=[1,2,3]', [true,true,true]);
+		eq('[3,4]>[1,2], [3,4]>[3,1], [1,2,3]>[5,6]', [true,true,true]);
+		eq('[1,2]<[3,4], [3,1]<[3,4], [5,6]<[1,2,3]', [true,true,true]);
+		// Comparing objects
+		eq('{foo:1, bar:2} == {foo:1, bar:2}', [true]);
+		eq('{foo:1, bar:2} != {foo:1, bar:2}', [false]);
+		eq('{foo:1, bar:2} != {foo:1, bar:3}', [true]);
+		eq('{foo:1, bar:2} == {foo:1, bar:3}', [false]);
+		eq('{foo:1, bar:[1,2]} == {foo:1, bar:[1,2]}', [true]);
+		eq('{foo:1, bar:[1,2]} == {foo:1, bar:[1,3]}', [false]);
+		eq('{foo:1, bar:[1,3]} > {foo:1, bar:[1,2]}', [true]);
+		// Comparing mixed
+		eq('null<false, null<true, null<0, null<1, null<"", null<"a", null<[], null<{}', [true,true,true,true,true,true,true,true]);
+		eq('null==null, null==false, null==true, null==0, null==1, null=="", null=="a", null==[], null=={}', [true,false,false,false,false,false,false,false,false]);
+		eq('false>null, false<true, false<0, false<1, false<"", false<"a", false<[], false<{}', [true,true,true,true,true,true,true,true]);
+		// CAUTION: [] is not an array, but an empty collection which evaluates to nothing. So []==false!
+		eq('false==false, false==true, false==0, false==1, false=="", false=="a", false==[], false=={}', [true,false,true,false,true,false,true,false]);
+		eq('true>null, true>false, true<0, true<1, true<"", true<"a", true<[], true<{}', [true,true,true,true,true,true,true,true]);
+		eq('true==0, true==1, true=="", true=="a", true==[], true=={}', [false,true,false,false,false,false]);
+		// Comparing strings and numbers happens the 'JavaScript way'.
+		eq('0>null, 0>false, 0>true, 0<1, 0<"", 0<"a", 0<[], 0<{}', [true,true,true,true,false,false,true,true]);
+		eq('1>null, 1>false, 1>true, 1>0, 1<"", 1<"a", 1<[], 1<{}', [true,true,true,true,false,false,true,true]);
+		eq('0==0, 0==1, 0=="", 0=="a", 0==[], 0=={}', [true,false,true,false,true,false]);
+		
 		
 		// Bitwise
 		eq('1or2', [3]);
@@ -132,6 +165,8 @@
 		deepEqual(jsq(complex, '.fifth | .baz'), jsq(complex, '.fifth.baz'));
 		deepEqual(jsq(complex, '.[]'), jsq(complex, '. | .[]'));
 		deepEqual(jsq(complex, '.fifth[]'), jsq(complex, '.fifth | .[]'));
+		
+		eq('empty | 1', [1], 'Piping an empty result');
 		
 		eq(complex2, '.[] | .first | add', [6,15], 'Multiple pipes');
 		eq(complex2, '.[] | (.first | add)', [6,15], 'Multiple pipes but nested with parentheses yields same result');
@@ -283,5 +318,113 @@
 			},
 			'third': null
 		}], 'Assigning to an unknown key creates it and sets it to null');
+		
+		// Shorthand assignment operators
+		eq(input1, '.first += 1', [{'first':2, 'second':2}], 'Shorthand addition');
+		eq(input1, '.first -= 1', [{'first':0, 'second':2}], 'Shorthand subtraction');
+		eq(input1, '.first *= 3', [{'first':3, 'second':2}], 'Shorthand multiplication');
+		eq(input1, '.second /= 2', [{'first':1, 'second':1}], 'Shorthand division');
+	});
+	
+	
+	QUnit.module('Standard functions');
+	test('add', function() {
+		eq('[1,2,3] | add', [6]);
+	});
+	
+	test('if', function() {
+		eq({foo:'bar'}, 'if(.foo=="bar", 1, 0)', [1]);
+	});
+	
+	test('empty', function() {
+		eq('1,2,empty,4', [1,2,4]);
+	});
+	
+	test('format', function() {
+		eq('[1,2] | format("first:%0, second:%1")', ["first:1, second:2"]);
+	});
+	
+	test('keys', function() {
+		eq(simple, 'keys', ['first','second','third','fourth']);
+	});
+	
+	test('length', function() {
+		eq(complex, '(.fourth | length), (.fifth | length)', [8,3]);
+	});
+	
+	test('map', function() {
+		eq(complex, '.fourth | map(.+1)', [2,3,4,5,6,7,8,9]);
+		eq(complex, '.fifth.sub | map(.+1)', [2,3]);
+	});
+	
+	test('max', function() {
+		eq(multiple, '.[0] | max', [3]);
+		eq(multiple, 'max(.first)', [{first:4, second:5}]);
+	});
+	
+	test('min', function() {
+		eq(multiple, '.[0] | min', [1]);
+		eq(multiple, 'min(.first)', [{first:1, second:2, third: 3}]);
+	});
+	
+	test('not', function() {
+		eq([0,1,null,[],{}], '.[] | not', [true,false,true,false,false]);
+	});
+	
+	test('pairs', function() {
+		eq(multiple, '.[1] | pairs', [['first',4], ['second',5]]);
+	});
+	
+	test('recurse', function() {
+		var recursive = {
+			"name": "1", "children": [
+				{"name": "1-1", "children": [
+					{"name": "1-1-1", "children": []},
+					{"name": "1-1-2", "children": []}
+				]},
+				{"name": "1-2"}
+			]
+		};
+		
+		eq(recursive, 'recurse(.children[]) | .name', ['1','1-1','1-1-1','1-1-2','1-2']);
+	});
+	
+	test('select', function() {
+		eq(simple, '.[] | select(.>=3)', [3,4]);
+	});
+	
+	test('sort', function() {
+		eq([1,3,2], 'sort', [[1,2,3]]);
+		eq(['a', 'ab', 'aa', 'A'], 'sort', [['A', 'a', 'aa', 'ab']]);
+		eq([true,false,1,null,'a',{},[]], 'sort', [[null,false,true,1,'a',[],{}]]);
+		
+		// Sorting arrays
+		eq([[6,1,0], [1,2,3,4], [5,6,7]], 'sort', [[[5,6,7], [6,1,0], [1,2,3,4]]]);
+		eq([[3,4,5], [1,2,3]], 'sort', [[[1,2,3], [3,4,5]]]);
+		eq([['a', 'c'], ['a', 'b']], 'sort', [[['a','b'], ['a','c']]]);
+		
+		// Sorting objects
+		var obj1 = {foo:1, bar:2}
+			, obj2 = {foo:2, bar:3}
+			, obj3 = {foo:2, baz:2};
+		eq([obj2, obj1], 'sort', [[obj1, obj2]]);
+		eq([obj3, obj2], 'sort', [[obj2, obj3]]);
+		obj4 = {foo:1, bar:[1,2,3]};
+		obj5 = {foo:1, bar:[1,2,4]};
+		eq([obj5, obj4], 'sort', [[obj4, obj5]]);
+		obj5.bar[2] = 2;
+		eq([obj5, obj4], 'sort', [[obj5, obj4]]);
+	});
+	
+	test('tonumber', function() {
+		eq('"1", "1foo", "foo1" | tonumber', [1,1,null]);
+	});
+	
+	test('tostring', function() {
+		eq('false, 1, [1,2,3] | tostring', ['false', '1', '[1,2,3]']);
+	});
+	
+	test('unique', function() {
+		eq('[1,2,2,3,"foo","bar","foo"] | unique', [[1,2,3,'foo','bar']]);
 	});
 })();

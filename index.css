@@ -154,7 +154,7 @@ code {
 }
 code {
 	color: crimson;
-	font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+	font-family: Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
 	/*font-size: 12px;*/
 	font-size: 0.75em;
 	padding: 2px 4px;

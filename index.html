@@ -18,7 +18,7 @@ than 5KB.</p>
 
 		
 		<div id="header">
-<pre class="lang-javascript"><code>var i = {
+<pre class="lang-javascript"><code>var o = {
   "data": [
     {"uid": 1, "grades": [5,7,8]},
     {"uid": 2, "grades": [3,9,6]}
@@ -29,7 +29,7 @@ than 5KB.</p>
   }
 };
 
-jsq(i, '.users as $u | .data[] | {$u[.uid].name: (.grades|max)}');
+jsq(o, '.users as $u | .data[] | {$u[.uid].name: (.grades|max)}');
 // » [{"Bruce Willis":8}, {"Samuel L. Jackson":9}]</pre></code>
 			
 			
@@ -112,8 +112,7 @@ produces it unchanged as output.</p>
 			<div>
 				<h3><p><code>.foo</code></p>
 </h3>
-				<p>The simplest <em>useful</em> filter is .foo. When given a
-JSON object (aka dictionary or hash) as input, it produces
+				<p>The simplest <em>useful</em> filter is .foo. When given a JSON object as input, it produces
 the value at the key &quot;foo&quot;, or nothing if there&#39;s none present.</p>
 
 			</div>
@@ -133,7 +132,7 @@ integer.</p>
 entirely, it will return <em>all</em> of the elements of an
 array. Running <code>.[]</code> with the input <code>[1,2,3]</code> will produce the
 numbers as a list of three results, rather than as a single
-array.</p>
+array. This also works for objects.</p>
 
 			</div>
 			<div>
@@ -157,7 +156,7 @@ that. </p>
 <p>If the one on the left produces multiple results, the one on
 the right will be run for each of those results. So, the
 expression <code>.[] | .foo</code> retrieves the &quot;foo&quot; field of each
-element of the input array.</p>
+result of the input expression.</p>
 
 			</div>
 			
@@ -166,19 +165,24 @@ element of the input array.</p>
 		<section>
 			<h2><p>Types and Values</p>
 </h2>
-			<p>jsq supports the same set of datatypes as JSON - numbers, strings, booleans, arrays,
+			<p>jsq supports the same set of datatypes as JSON - strings, numbers, booleans, arrays,
 objects, and &quot;null&quot;.</p>
-<p>Booleans, null, strings and numbers are written the same way as in javascript. Just like
-everything else in jsq, these simple values take an input and produce an output — <code>42</code> is
-a valid jsq expression that takes an input, ignores it, and returns 42 instead.</p>
-<p>Like in JSON, strings are delimited using &quot;double quotes&quot;. &#39;Single quotes&#39; are now allowed.</p>
 
 			
+			<div>
+				<h3><p>Simple values</p>
+</h3>
+				<p>Strings, numbers, booleans and null are written the same way as in javascript. Just like
+everything else in jsq, these simple values take an input and produce an output — <code>42</code> is
+a valid jsq expression that takes an input, ignores it, and returns 42 instead.</p>
+<p>Like in JSON, strings are delimited using &quot;double quotes&quot;. &#39;Single quotes&#39; are not allowed.</p>
+
+			</div>
 			<div>
 				<h3><p>Arrays — <code>[]</code></p>
 </h3>
 				<p>Similar to JavaScript, <code>[]</code> is used to construct arrays, as in <code>[1,2,3]</code>. The elements
-of the arrays can be any jsq expression. All of the results produced by all of the
+of the array can be any jsq expression. All of the results produced by all of the
 expressions are collected into one big array. You can use it to construct an array out
 of a known quantity of values (as in <code>[.foo, .bar, .baz]</code>) or to &quot;collect&quot; all the results
 of a filter into an array (as in <code>[.items[].name]</code>)</p>
@@ -194,7 +198,7 @@ syntax in a different light: the expression <code>[1,2,3]</code> is not using a
 built-in syntax for comma-separated arrays, but is actually applying
 the <code>[]</code> operator (collect results) to the expression <code>1,2,3</code> which
 produces a list of 3 integers.</p>
-<p>A list will produce as many results as it has elements.</p>
+<p>A list will concatenate all results from all elements of the list.</p>
 
 			</div>
 			<div>
@@ -202,7 +206,7 @@ produces a list of 3 integers.</p>
 </h3>
 				<p>Continuing JavaScript&#39;s familiarity, objects are constructed using <code>{}</code> — e.g.:
 <code>{&quot;a&quot;: 42, &quot;b&quot;: 17}</code>.</p>
-<p>If the keys are &quot;sensible&quot; (all alphabetic characters), then
+<p>If the keys are &quot;sensible&quot; (all alphanumeric characters), then
 the quotes can be left off. The value can be any expression
 (although you may need to wrap it in parentheses if it&#39;s a
 complicated one — like when using a list), which gets applied to the {} expression&#39;s
@@ -235,7 +239,7 @@ expression. With the same input as above,</p>
 <p>produces</p>
 <pre><code class="lang-javascript">{&quot;tjoekbezoer&quot;: [&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</code></pre>
 <p>Simple expressions, like a single filter, can also be used without the parentheses. A
-filter defining a key can return only one result, or jsq will throw an error.</p>
+filter used as a key name can return only one result, or jsq will throw an error.</p>
 
 			</div>
 			
@@ -271,7 +275,7 @@ to the same input, and adds the results together. What
 <li><p><strong>Objects</strong> are added by merging, that is, inserting all
   the key-value pairs from both objects into a single
   combined object. If both objects contain a value for the
-  same key, the object on the right of the <code>+</code> wins.</p>
+  same key, the object on the right of the <code>+</code> will be used.</p>
 </li>
 </ul>
 
@@ -313,25 +317,20 @@ equal or not equal, without any further notion of being &quot;the
 same object&quot; or &quot;not the same object&quot;.</p>
 <p>If an object has two fields which are arrays, <code>.foo</code> and <code>.bar</code>,
 and you append something to <code>.foo</code>, then <code>.bar</code> will not get
-bigger. Even if you&#39;ve just set <code>.bar = .foo</code>. If you&#39;re used to
-programming in languages like Python, Java, Ruby, Javascript,
-etc. then you can think of it as though jsq does a full deep copy
-of every object before it does the assignment (for performance,
-it doesn&#39;t actually do that, but that&#39;s the general idea).</p>
+bigger. Even if you&#39;ve just set <code>.bar = .foo</code>.</p>
 
 			
 			<div>
 				<h3><p><code>=</code></p>
 </h3>
-				<p>The filter <code>.foo = 1</code> will take as input an object
+				<p>The assignment operation <code>.foo = 1</code> will take as input an object
 and produce as output an object with the &quot;foo&quot; field set to
 1. There is no notion of &quot;modifying&quot; or &quot;changing&quot; something
 in jsq - all jsq values are immutable. For instance,</p>
 <pre><code class="lang-jsq">.foo = .bar | .foo.baz = 1</code></pre>
 <p>will not have the side-effect of setting .bar.baz to be set
 to 1, as the similar-looking program in Javascript, Python,
-Ruby or other languages would. Unlike these languages (but
-like Haskell and some other functional languages), there is
+Ruby or other languages would. Unlike these languages, there is
 no notion of two arrays or objects being &quot;the same array&quot; or
 &quot;the same object&quot;. They can be equal, or not equal, but if
 we change one of them in no circumstances will the other
@@ -348,21 +347,18 @@ can produce can be represented in JSON.</p>
 				<p>As well as the assignment operator &#39;=&#39;, jsq provides the &quot;update&quot;
 operator &#39;|=&#39;, which takes a filter on the right-hand side and
 works out the new value for the property being assigned to by running
-the old value through this expression. For instance, .foo |= .+1 will
+the old value through this expression. For instance, <code>.foo |= .+1</code> will
 build an object with the &quot;foo&quot; field set to the input&#39;s &quot;foo&quot; plus 1.</p>
 <p>This example should show the difference between &#39;=&#39; and &#39;|=&#39;. Provide input</p>
 <pre><code class="lang-javascript">{&quot;a&quot;: {&quot;b&quot;: 10}, &quot;b&quot;: 20}</code></pre>
-<p>to the programs <code>.a = .b</code> and <code>.a |= .b</code></p>
-<p>The former will set the &quot;a&quot; field of the input to the &quot;b&quot; field of the
-input, and produce the output {&quot;a&quot;: 20}. The latter will set the &quot;a&quot;
-field of the input to the &quot;a&quot; field&#39;s &quot;b&quot; field, producing {&quot;a&quot;: 10}.</p>
+<p>to <code>.a = .b</code> and it produces <code>{&quot;a&quot;: 20, &quot;b&quot;: 20}</code>.<br>to <code>.a |= .b</code> and it produces <code>{&quot;a&quot;: 10, &quot;b&quot;: 20}</code>.</p>
 
 			</div>
 			<div>
 				<h3><p><code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code></p>
 </h3>
-				<p>jsq has a few operators of the form <code>a op= b</code>, which are all
-equivalent to <code>a |= . op b</code>. So, <code>+= 1</code> can be used to increment values.</p>
+				<p>jsq has a few operators of the form <code>a op= b</code>, which are all equivalent to
+<code>a |= . op b</code>. So for example, <code>+= 1</code> can be used to increment values.</p>
 
 			</div>
 			<div>
@@ -386,68 +382,46 @@ path is then used to find which part of the input to change while
 executing the assignment. Any filter may be used on the
 left-hand side of an equals - whichever paths it selects from the
 input will be where the assignment is performed.</p>
-<p>This is a very powerful operation. Suppose we wanted to add a comment
-to blog posts, using the same &quot;blog&quot; input above. This time, we only
-want to comment on the posts written by &quot;tjoekbezoer&quot;. We can find those
-posts using the &quot;select&quot; function described earlier:</p>
-<pre><code class="lang-jsq">.posts[] | select(.author == &quot;tjoekbezoer&quot;)</code></pre>
-<p>The paths provided by this operation point to each of the posts that
-&quot;tjoekbezoer&quot; wrote, and we can comment on each of them in the same way
-that we did before:</p>
-<pre><code class="lang-jsq">(.posts[] | select(.author == &quot;tjoekbezoer&quot;) | .comments) |= . + [&quot;terrible.&quot;]</code></pre>
 
 			</div>
 			
 			<hr/>
 		</section>
 		<section>
-			<h2><p>Conditionals and Comparisons</p>
+			<h2><p>Comparisons and Conditionals</p>
 </h2>
 			
 			
 			<div>
-				<h3><p><code>==</code>, <code>===</code>, <code>!=</code></p>
+				<h3><p><code>==</code>, <code>!=</code>, <code>===</code></p>
 </h3>
-				<p><strong>UNDONE</strong><br>The expression &#39;a == b&#39; will produce &#39;true&#39; if the result of a and b
-are equal (that is, if they represent equivalent JSON documents) and
-&#39;false&#39; otherwise. In particular, strings are never considered equal
-to numbers. If you&#39;re coming from Javascript, jsq&#39;s == is like
-Javascript&#39;s === - considering values equal only when they have the
-same type as well as the same value.</p>
-<p>!= is &quot;not equal&quot;, and &#39;a != b&#39; returns the opposite value of &#39;a == b&#39;</p>
+				<p>For <a href="http://en.wikipedia.org/wiki/Scalar_(computing)">scalars</a>, these comparison operators behave the same as their Javascript equivalents.
+For arrays and objects, a deep comparison is performed.</p>
 
 			</div>
 			<div>
 				<h3><p><code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code></p>
 </h3>
-				<p><strong>UNDONE</strong><br>The comparison operators <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code> behave as expected. Additionaly, it can be
+				<p>The comparison operators <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code> behave as expected. They can also be
 used to compare arrays and objects.</p>
-<p>The ordering is the same as that described for <code>sort</code>, above.</p>
+<p>The ordering is the same as that described for the built-in function <code>sort</code>, below.</p>
 
 			</div>
 			<div>
 				<h3><p><code>if(cond, then[, else])</code></p>
 </h3>
-				<p><strong>UNDONE</strong><br><code>if(A, B, C)</code> will execute <code>B</code> if <code>A</code> evaluates as truthy, otherwise it will optionally
-execute <code>C</code>.</p>
-<p>Checking for false or null is a simpler notion of
-&quot;truthiness&quot; than is found in Javascript or Python, but it
-means that you&#39;ll sometimes have to be more explicit about
-the condition you want: you can&#39;t test whether, e.g. a
-string is empty using <code>if .name then A else B end</code>, you&#39;ll
-need something more like <code>if (.name | count) &gt; 0 then A else
-B end</code> instead.</p>
-<p>If the condition A produces multiple results, it is
-considered &quot;true&quot; if any of those results is not false or
-null. If it produces zero results, it&#39;s considered false.</p>
+				<p>Consider the expression <code>if(A, B, C)</code>. If <code>A</code> evaluates as truthy, <code>B</code> will be executed.
+Otherwise it will execute <code>C</code>, if provided.</p>
+<p>If the condition <code>A</code> is an expression producing multiple results, it is considered &quot;true&quot;
+if any of those results is truthy. If it produces zero results, it&#39;s considered false.</p>
+<p>More about truthy values: <a href="http://javascriptweblog.wordpress.com/2011/02/07/truth-equality-and-javascript">Truth, equality and JavaScript</a></p>
 
 			</div>
 			<div>
 				<h3><p><code>&amp;&amp;</code>, <code>||</code>, <code>!</code></p>
 </h3>
 				<p>jsq supports the normal Boolean operators <code>&amp;&amp;</code> and <code>||</code>. They have the
-same standard of truth as <code>if</code> expressions - <code>false</code> and <code>null</code> are
-considered &quot;false values&quot;, and anything else is a &quot;true value&quot;.</p>
+same standard of truth as <code>if</code> expressions.</p>
 <p>If an operand of one of these operators produces multiple
 results, the operator itself will produce a result for each input.</p>
 <p>The boolean operators behave the same as JavaScript&#39;s, returning the value of the last
@@ -511,7 +485,7 @@ of binding the variable, it has the same effect as &quot;.&quot;.</p>
 			<hr/>
 		</section>
 		<section>
-			<h2><p>Builtin functions</p>
+			<h2><p>Built-in functions</p>
 </h2>
 			<p>Jsq comes with a set of builtin functions that allow you to perform extra operations on your
 data, like filtering or transforming. Every function listed here is written in JavaScript,
@@ -610,7 +584,7 @@ need to include <a href="https://github.com/douglascrockford/JSON-js">json2.js</
 
 			</div>
 			<div>
-				<h3><p><code>sort</code>, <code>sort_by</code></p>
+				<h3><p><code>sort</code></p>
 </h3>
 				<p>The <code>sort</code> function sorts its input, which must be an
 array. Values are sorted in the following order:</p>
@@ -627,10 +601,6 @@ array. Values are sorted in the following order:</p>
 compared by comparing their sets of keys (as arrays in
 sorted order), and if their keys are equal then the values
 are compared key by key.</p>
-<p><code>sort_by</code> may be used to sort by a particular field of an
-object, or by applying any jsq filter. <code>sort_by(foo)</code>
-compares two elements by comparing the result of <code>foo</code> on
-each element.</p>
 
 			</div>
 			<div>
@@ -639,6 +609,12 @@ each element.</p>
 				<p>Find the minimum or maximum element of the input array. Providing a filter as argument
 allows you to specify a particular field or property to examine, e.g. <code>min(.foo)</code>
 finds the object with the smallest <code>foo</code> field.</p>
+
+			</div>
+			<div>
+				<h3><p><code>not</code></p>
+</h3>
+				<p>This function simply negates the input it receives.</p>
 
 			</div>
 			<div>
