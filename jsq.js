@@ -111,6 +111,7 @@ var DEV = true;
 		return	typeof mixed == 'number' && 'number' ||
 						typeof mixed == 'string' && 'string' ||
 						typeof mixed == 'boolean' && 'boolean' ||
+						typeof mixed == 'undefined' && 'undefined' ||
 						false;
 	}
 	// Replaces %# in a string with the (#+1)th argument.
