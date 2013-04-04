@@ -14,7 +14,7 @@
 		{{{intro}}}
 		
 		<div id="header">
-<pre class="lang-javascript"><code>var i = {
+<pre class="lang-javascript"><code>var o = {
   "data": [
     {"uid": 1, "grades": [5,7,8]},
     {"uid": 2, "grades": [3,9,6]}
@@ -25,14 +25,14 @@
   }
 };
 
-jsq(i, '.users as $u | .data[] | {$u[.uid].name: (.grades|max)}');
+jsq(o, '.users as $u | .data[] | {$u[.uid].name: (.grades|max)}');
 // » [{"Bruce Willis":8}, {"Samuel L. Jackson":9}]</pre></code>
 			
 			
 		</div>
 		
-		<iframe id="watchButton" src="http://ghbtns.com/github-btn.html?user=tjoekbezoer&repo=jsq&type=watch"
-		  allowtransparency="true" frameborder="0" scrolling="0" width="50" height="20"></iframe>
+		<!-- <iframe id="watchButton" src="http://ghbtns.com/github-btn.html?user=tjoekbezoer&repo=jsq&type=watch"
+		  allowtransparency="true" frameborder="0" scrolling="0" width="50" height="20"></iframe> -->
 		
 		{{#sections}}
 		<section>
