@@ -293,7 +293,7 @@ var DEV = true;
 			// This line is based on the fact that `token` will always return an array like
 			// [matched string, [subpattern, ...]], so in this case 11 elements after the
 			// matched string.
-			i = 0; while( ++i<=14 && token[i]==void(0) ){}
+			i = 0; while( ++i<=14 && token[i]===void(0) ){}
 			if( i == _t.str )
 				token[0] = token[0].slice(1,-1);
 			// Add token.
@@ -1094,7 +1094,7 @@ var DEV = true;
 				// it to elements resulting from the lhs filter. Is the rhs expression produces
 				// multiple results, use the last.
 				exp = _expression(input, [], children[2]).pop();
-				res = exp != void(0) ? exp : null;
+				res = exp !== void(0) ? exp : null;
 				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
 					obj[key] = res;
 				});
@@ -1103,7 +1103,7 @@ var DEV = true;
 				// assign the result to the elements resulting from the lhs filter.
 				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
 					exp = _expression([obj[key]], [], children[2]).pop();
-					res = exp != void(0) ? exp : null;
+					res = exp !== void(0) ? exp : null;
 					obj[key] = res;
 				});
 			}
@@ -1123,7 +1123,7 @@ var DEV = true;
 		// No callback? Then perform default action: returning found value as result.
 		if( !callback ) {
 			callback = function( val, key, obj ) {
-				val != void(0) && output.push(val);
+				val !== void(0) && output.push(val);
 			};
 		}
 		
@@ -1141,7 +1141,7 @@ var DEV = true;
 		for( j=0; j<input.length; j++ ) {
 			element = input[j];
 			// When querying for sub-sub-keys, the result can be undefined at the first sub-key.
-			if( element == void(0) ) continue;
+			if( element === void(0) ) continue;
 			
 			// TODO: `range` as key selector for arrays
 			if( !child ) {
