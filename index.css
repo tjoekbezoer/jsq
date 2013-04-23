@@ -167,3 +167,67 @@ code {
 		color: inherit;
 		white-space: pre-wrap;
 	}
+
+div.examples {
+	
+}
+	div.examples .header {
+		cursor: pointer;
+		color: #558BC4;
+		position: relative;
+		left: 12px;
+		user-select: none;
+		-moz-user-select: none;
+		-webkit-user-select: none;
+	}
+	div.examples .header:hover {
+		text-decoration: underline;
+	}
+	div.examples .header:before {
+		color: #000;
+		content: '▸';
+		/*content: '❯';*/
+		/*font-size: 80%;*/
+		position: absolute;
+		left: -12px;
+		transition: all 0.1s ease-out;
+		-moz-transition: all 0.1s ease-out;
+		-webkit-transition: all 0.1s ease-out;
+	}
+	div.examples .header.visible:before {
+		transform: rotate(90deg);
+		-webkit-transform: rotate(90deg);
+		-moz-transform: rotate(90deg);
+	}
+	div.examples div.table {
+		max-height: 0px;
+		overflow: hidden;
+	}
+	div.examples div.table.visible {
+		max-height: 600px;
+	}
+	div.examples div.table.animate {
+		transition: max-height 0.3s linear;
+		-webkit-transition: max-height 0.3s linear;
+		-moz-transition: max-height 0.3s linear;
+	}
+	div.examples table, div.examples td {
+		border: 0;
+		border-collapse: collapse;
+	}
+	div.examples td p {
+		margin: 0;
+	}
+	div.examples tr:nth-child(3n+1) td {
+		border-top: 1px solid lightgray;
+	}
+	div.examples td:first-child {
+		padding-right: 20px;
+		text-align: right;
+		vertical-align: top;
+	}
+	div.examples td:nth-child(2) {
+		font-family: Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+		font-size: 14px;
+		white-space: nowrap;
+}

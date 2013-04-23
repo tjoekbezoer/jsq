@@ -109,12 +109,44 @@ is <code>.</code>. This is a filter that takes its input and
 produces it unchanged as output.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.</p>
+</td></tr>
+						<tr><td>Input</td><td><p>&quot;Hello, world!&quot;</p>
+</td></tr>
+						<tr><td>Output</td><td><p>&quot;Hello, world!&quot;</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>.foo</code></p>
 </h3>
 				<p>The simplest <em>useful</em> filter is .foo. When given a JSON object as input, it produces
 the value at the key &quot;foo&quot;, or nothing if there&#39;s none present.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.foo</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;foo&quot;: 42, &quot;bar&quot;: &quot;less interesting data&quot;}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[42]</p>
+</td></tr>
+						<tr><td></td><td><p>.foo</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;notfoo&quot;: true, &quot;alsonotfoo&quot;: false}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[]</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>.[&quot;foo&quot;]</code></p>
@@ -124,6 +156,25 @@ the value at the key &quot;foo&quot;, or nothing if there&#39;s none present.</p
 one works for arrays as well, if the key is an
 integer.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.[0]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[{&quot;name&quot;:&quot;JSON&quot;, &quot;good&quot;:true}, {&quot;name&quot;:&quot;XML&quot;, &quot;good&quot;:false}]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>{&quot;name&quot;:&quot;JSON&quot;, &quot;good&quot;:true}</p>
+</td></tr>
+						<tr><td></td><td><p>.[2]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[{&quot;name&quot;:&quot;JSON&quot;, &quot;good&quot;:true}, {&quot;name&quot;:&quot;XML&quot;, &quot;good&quot;:false}]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>null</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>.[]</code></p>
@@ -135,6 +186,31 @@ numbers as a list of three results, rather than as a single
 array. This also works for objects.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.[]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[{&quot;name&quot;:&quot;JSON&quot;, &quot;good&quot;:true}, {&quot;name&quot;:&quot;XML&quot;, &quot;good&quot;:false}]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[{&quot;name&quot;:&quot;JSON&quot;, &quot;good&quot;:true}, {&quot;name&quot;:&quot;XML&quot;, &quot;good&quot;:false}]</p>
+</td></tr>
+						<tr><td></td><td><p>.[]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;name&quot;:&quot;JSON&quot;, &quot;good&quot;:true}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[&quot;JSON&quot;, true]</p>
+</td></tr>
+						<tr><td></td><td><p>.[]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[]</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>,</code></p>
 </h3>
@@ -145,6 +221,31 @@ expression, and then all of the outputs produced by the right. For instance, fil
 <p>By combining expression like this, you are creating what is called a <em>list</em>. You can
 read more about this in the next chapter <strong>Types and Values</strong>.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.foo, .bar</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;foo&quot;: 42, &quot;bar&quot;: &quot;something else&quot;, &quot;baz&quot;: true}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[42, &quot;something else&quot;]</p>
+</td></tr>
+						<tr><td></td><td><p>.user, .projects[]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;projects&quot;: [&quot;jsq&quot;, &quot;wikiflow&quot;]}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[&quot;tjoekbezoer&quot;, &quot;jsq&quot;, &quot;wikiflow&quot;]</p>
+</td></tr>
+						<tr><td></td><td><p>.[4,2]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;d&quot;,&quot;e&quot;]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[&quot;e&quot;, &quot;c&quot;]</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>|</code></p>
@@ -158,6 +259,19 @@ the right will be run for each of those results. So, the
 expression <code>.[] | .foo</code> retrieves the &quot;foo&quot; field of each
 result of the input expression.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.[] | .name</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[{&quot;name&quot;:&quot;JSON&quot;, &quot;good&quot;:true}, {&quot;name&quot;:&quot;XML&quot;, &quot;good&quot;:false}]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[&quot;JSON&quot;, &quot;XML&quot;]</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			
 			<hr/>
@@ -178,6 +292,13 @@ a valid jsq expression that takes an input, ignores it, and returns 42 instead.<
 <p>Like in JSON, strings are delimited using &quot;double quotes&quot;. &#39;Single quotes&#39; are not allowed.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p>Arrays — <code>[]</code></p>
 </h3>
@@ -190,6 +311,19 @@ of a filter into an array (as in <code>[.items[].name]</code>)</p>
 produce a single result, an array of four elements.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>[.user, .projects[]]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;projects&quot;: [&quot;jsq&quot;, &quot;wikiflow&quot;]}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[[&quot;tjoekbezoer&quot;, &quot;jsq&quot;, &quot;wikiflow&quot;]]</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p>Lists — <code>1,2,3</code></p>
 </h3>
@@ -200,6 +334,13 @@ the <code>[]</code> operator (collect results) to the expression <code>1,2,3</co
 produces a list of 3 integers.</p>
 <p>A list will concatenate all results from all elements of the list.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p>Objects — <code>{}</code></p>
@@ -242,6 +383,25 @@ expression. With the same input as above,</p>
 filter used as a key name can return only one result, or jsq will throw an error.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>{user, title: .titles[]}</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;user&quot;:&quot;tjoekbezoer&quot;,&quot;titles&quot;:[&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[{&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;title&quot;: &quot;JSQ Primer&quot;}, {&quot;user&quot;:&quot;tjoekbezoer&quot;, &quot;title&quot;: &quot;More JSQ&quot;}]</p>
+</td></tr>
+						<tr><td></td><td><p>{(.user): .titles}</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;user&quot;:&quot;tjoekbezoer&quot;,&quot;titles&quot;:[&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[{&quot;tjoekbezoer&quot;: [&quot;JSQ Primer&quot;, &quot;More JSQ&quot;]}]</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			
 			<hr/>
 		</section>
@@ -280,6 +440,43 @@ to the same input, and adds the results together. What
 </ul>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.a + 1</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;a&quot;: 7}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[8]</p>
+</td></tr>
+						<tr><td></td><td><p>.a + .b</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;a&quot;: [1,2], &quot;b&quot;: [3,4]}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[[1,2,3,4]]</p>
+</td></tr>
+						<tr><td></td><td><p>.a + null</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;a&quot;: 1}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[1]</p>
+</td></tr>
+						<tr><td></td><td><p>.a + 1</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[1]</p>
+</td></tr>
+						<tr><td></td><td><p>{a: 1} + {b: 2} + {c: 3} + {a: 42}</p>
+</td></tr>
+						<tr><td>Input</td><td><p>null</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[{&quot;a&quot;: 42, &quot;b&quot;: 2, &quot;c&quot;: 3}]</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p>Subtraction - <code>-</code></p>
 </h3>
@@ -292,17 +489,55 @@ from the first object.</li>
 </ul>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>4 - .a</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;a&quot;:3}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[1]</p>
+</td></tr>
+						<tr><td></td><td><p>. - [&quot;xml&quot;, &quot;yaml&quot;]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[&quot;xml&quot;, &quot;yaml&quot;, &quot;json&quot;]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[[&quot;json&quot;]]</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p>Multiplication, division - <code>*</code> and <code>/</code></p>
 </h3>
 				<p>These operators only work on numbers, and do the expected.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>10 / . * 3</p>
+</td></tr>
+						<tr><td>Input</td><td>5</td></tr>
+						<tr><td>Output</td><td><p>[6]</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p>Binary — <code>and</code>, <code>or</code> and <code>xor</code></p>
 </h3>
 				<p>These operators are similar to JavaScript&#39;s <code>&amp;</code>, <code>|</code> and <code>^</code>.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+					</table>
+				</div>
 			</div>
 			
 			<hr/>
@@ -341,6 +576,13 @@ quite intentional, and ensures that anything a jsq program
 can produce can be represented in JSON.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>|=</code></p>
 </h3>
@@ -354,12 +596,32 @@ build an object with the &quot;foo&quot; field set to the input&#39;s &quot;foo&
 <p>to <code>.a = .b</code> and it produces <code>{&quot;a&quot;: 20, &quot;b&quot;: 20}</code>.<br>to <code>.a |= .b</code> and it produces <code>{&quot;a&quot;: 10, &quot;b&quot;: 20}</code>.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code></p>
 </h3>
 				<p>jsq has a few operators of the form <code>a op= b</code>, which are all equivalent to
 <code>a |= . op b</code>. So for example, <code>+= 1</code> can be used to increment values.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.foo += 1</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;foo&quot;: 42}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>{&quot;foo&quot;: 43}</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p>Complex assignments</p>
@@ -384,6 +646,13 @@ left-hand side of an equals - whichever paths it selects from the
 input will be where the assignment is performed.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+					</table>
+				</div>
+			</div>
 			
 			<hr/>
 		</section>
@@ -399,6 +668,22 @@ input will be where the assignment is performed.</p>
 For arrays and objects, a deep comparison is performed.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.[] == 1</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[1, 1.0, &quot;1&quot;, &quot;banana&quot;]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>true</p>
+,<p>true</p>
+,<p>false</p>
+,<p>false</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>&gt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, <code>&lt;</code></p>
 </h3>
@@ -406,6 +691,18 @@ For arrays and objects, a deep comparison is performed.</p>
 used to compare arrays and objects.</p>
 <p>The ordering is the same as that described for the built-in function <code>sort</code>, below.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>. &lt; 5</p>
+</td></tr>
+						<tr><td>Input</td><td>2</td></tr>
+						<tr><td>Output</td><td><p>true</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>if(cond, then[, else])</code></p>
@@ -416,6 +713,24 @@ Otherwise it will execute <code>C</code>, if provided.</p>
 if any of those results is truthy. If it produces zero results, it&#39;s considered false.</p>
 <p>More about truthy values: <a href="http://javascriptweblog.wordpress.com/2011/02/07/truth-equality-and-javascript">Truth, equality and JavaScript</a></p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>if . == 0 then
+  &quot;zero&quot;
+elif . == 1 then
+  &quot;one&quot;
+else
+  &quot;many&quot;
+end</p>
+</td></tr>
+						<tr><td>Input</td><td>2</td></tr>
+						<tr><td>Output</td><td><p>&quot;many&quot;</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>&amp;&amp;</code>, <code>||</code>, <code>!</code></p>
@@ -428,6 +743,41 @@ results, the operator itself will produce a result for each input.</p>
 correct operand. So for example <code>0 &amp;&amp; 2</code> returns <code>2</code>; <code>!1 || 3</code> returns <code>3</code>.</p>
 <p><code>!</code> simply negates the proceding value.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>42 and &quot;a string&quot;</p>
+</td></tr>
+						<tr><td>Input</td><td><p>null</p>
+</td></tr>
+						<tr><td>Output</td><td><p>true</p>
+</td></tr>
+						<tr><td></td><td><p>(true, false) or false</p>
+</td></tr>
+						<tr><td>Input</td><td><p>null</p>
+</td></tr>
+						<tr><td>Output</td><td><p>true</p>
+,<p>false</p>
+</td></tr>
+						<tr><td></td><td><p>(true, false) and (true, false)</p>
+</td></tr>
+						<tr><td>Input</td><td><p>null</p>
+</td></tr>
+						<tr><td>Output</td><td><p>true</p>
+,<p>false</p>
+,<p>false</p>
+,<p>false</p>
+</td></tr>
+						<tr><td></td><td><p>[true, false | not]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>null</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[false, true]</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			
 			<hr/>
@@ -442,9 +792,9 @@ to two distinct subexpressions (here <code>a</code> and <code>b</code> are both 
 same input), so variables aren&#39;t usually necessary in order to use a
 value twice.</p>
 <p>For instance, calculating the average value of an array of numbers
-requires a few variables in most languages - at least one to hold the
-array, perhaps one for each element or for a loop counter. In jsq, it&#39;s
-simply <code>add / length</code> - the <code>add</code> expression is given the array and
+requires a few variables in most languages; at least one to hold the
+array, and perhaps one for each element or for a loop counter. In jsq, it&#39;s
+simply <code>add / length</code> — the <code>add</code> expression is given the array and
 produces its sum, and the <code>length</code> expression is given the array and
 produces its length.</p>
 <p>So, there&#39;s generally a cleaner way to solve most problems in jsq that
@@ -487,7 +837,7 @@ of binding the variable, it has the same effect as &quot;.&quot;.</p>
 		<section>
 			<h2><p>Built-in functions</p>
 </h2>
-			<p>Jsq comes with a set of builtin functions that allow you to perform extra operations on your
+			<p>Jsq comes with a set of built-in functions that allow you to perform extra operations on your
 data, like filtering or transforming. Every function listed here is written in JavaScript,
 and defined in the public <code>jsq.fn</code> object, so it&#39;s possible to alter them, or add new ones
 of your own.</p>
@@ -496,31 +846,58 @@ of your own.</p>
 			<div>
 				<h3><p><code>length</code></p>
 </h3>
-				<p>The builtin function <code>length</code> gets the length of various
+				<p>The built-in function <code>length</code> gets the length of various
 different types of values:</p>
 <ul>
-<li><p>The length of a <strong>string</strong> is obviously the number of characters.</p>
-</li>
-<li><p>The length of an <strong>array</strong> is the number of elements.</p>
-</li>
-<li><p>The length of an <strong>object</strong> is the number of key-value pairs.</p>
-</li>
-<li><p>The length of <strong>null</strong> is zero.</p>
-</li>
+<li>The length of a <strong>string</strong> is the number of characters.</li>
+<li>The length of an <strong>array</strong> is the number of elements.</li>
+<li>The length of an <strong>object</strong> is the number of key-value pairs.</li>
+<li>The length of <strong>null</strong> is zero.</li>
 </ul>
 <p>When trying to get the length of a number, it will return nothing.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.[] | length</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[[1,2], &quot;string&quot;, {&quot;a&quot;:2}, null]</p>
+</td></tr>
+						<tr><td>Output</td><td>2,6,1,0</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>keys</code></p>
 </h3>
-				<p>The builtin function <code>keys</code>, when given an object, returns its keys
+				<p>The built-in function <code>keys</code>, when given an object, returns its keys
 in a list. When given an array, it returns the valid indices  for that
 array: the integers from 0 to length-1.</p>
 <p>When &#39;keying&#39; an object, do not rely on the sort order. The order in which the
 keys are returned is defined by the browser implementation of object iteration,
 which is not cross-browser consistent.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>keys</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;abc&quot;: 1, &quot;abcd&quot;: 2, &quot;Foo&quot;: 3}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[&quot;Foo&quot;, &quot;abc&quot;, &quot;abcd&quot;]</p>
+</td></tr>
+						<tr><td></td><td><p>keys</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[42,3,35]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[0,1,2]</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>pairs</code></p>
@@ -529,6 +906,13 @@ which is not cross-browser consistent.</p>
 is a key-value combination. This also works on arrays.</p>
 <p>Like with the <code>keys</code> function, do not rely on sort order when &#39;pairing&#39; an object.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>select</code></p>
@@ -540,12 +924,42 @@ otherwise.</p>
 will give you <code>[2,3]</code>.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>map(select(. &gt;= 2))</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[1,5,3,0,7]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[5,3,7]</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>empty</code></p>
 </h3>
 				<p><code>empty</code> returns no results. None at all. Not even <code>null</code>.</p>
-<p>It&#39;s useful on occasion. You&#39;ll know if you need it :)</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>1, empty, 2</p>
+</td></tr>
+						<tr><td>Input</td><td><p>null</p>
+</td></tr>
+						<tr><td>Output</td><td>1,2</td></tr>
+						<tr><td></td><td><p>[1,2,empty,3]</p>
+</td></tr>
+						<tr><td>Input</td><td><p>null</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[1,2,3]</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>map(x)</code></p>
@@ -555,6 +969,19 @@ object/array, and produce a list of results equal to the amount of elements.
 <code>map(.+1)</code> will increment each element of an array of numbers.</p>
 <p><code>map(x)</code> is equivalent to <code>.[] | x</code>.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>map(.+1)</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[1,2,3]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[2,3,4]</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>add</code></p>
@@ -567,6 +994,30 @@ as those for the <code>+</code> operator (described above).</p>
 <p>If the input is an empty array, <code>add</code> returns <code>null</code>.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>add</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>&quot;abc&quot;</p>
+</td></tr>
+						<tr><td></td><td><p>add</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[1, 2, 3]</p>
+</td></tr>
+						<tr><td>Output</td><td>6</td></tr>
+						<tr><td></td><td><p>add</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>null</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>tonumber</code></p>
 </h3>
@@ -575,13 +1026,39 @@ and arrays, nor can it parse strings not starting with a number. In these cases,
 will return <code>null</code>. Parsing  booleans results in <code>1</code> or <code>0</code>.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.[] | tonumber</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[1, &quot;1&quot;]</p>
+</td></tr>
+						<tr><td>Output</td><td>1,1</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>tostring</code></p>
 </h3>
 				<p>The <code>tostring</code> function prints its input as a string. Jsq uses <code>JSON.stringify</code> for this,
-so make sure it is available (it is in modern browsers, but for older browser you might
-need to include <a href="https://github.com/douglascrockford/JSON-js">json2.js</a>)</p>
+so make sure it is available (in older browser you might need to include <a href="https://github.com/douglascrockford/JSON-js">json2.js</a>)</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>.[] | tostring</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[1, &quot;1&quot;, [1]]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>&quot;1&quot;</p>
+,<p>&quot;1&quot;</p>
+,<p>&quot;[1]&quot;</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>sort</code></p>
@@ -603,6 +1080,25 @@ sorted order), and if their keys are equal then the values
 are compared key by key.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>sort</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[8,3,null,6]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[null,3,6,8]</p>
+</td></tr>
+						<tr><td></td><td><p>sort_by(.foo)</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[{&quot;foo&quot;:4, &quot;bar&quot;:10}, {&quot;foo&quot;:3, &quot;bar&quot;:100}, {&quot;foo&quot;:2, &quot;bar&quot;:1}]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[{&quot;foo&quot;:2, &quot;bar&quot;:1}, {&quot;foo&quot;:3, &quot;bar&quot;:100}, {&quot;foo&quot;:4, &quot;bar&quot;:10}]</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>min</code>, <code>max</code></p>
 </h3>
@@ -611,11 +1107,43 @@ allows you to specify a particular field or property to examine, e.g. <code>min(
 finds the object with the smallest <code>foo</code> field.</p>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>min</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[5,4,2,7]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>2</p>
+</td></tr>
+						<tr><td></td><td><p>max_by(.foo)</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[{&quot;foo&quot;:1, &quot;bar&quot;:14}, {&quot;foo&quot;:2, &quot;bar&quot;:3}]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>{&quot;foo&quot;:2, &quot;bar&quot;:3}</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>not</code></p>
 </h3>
 				<p>This function simply negates the input it receives.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>not</p>
+</td></tr>
+						<tr><td>Input</td><td><p>[0,1,2]</p>
+</td></tr>
+						<tr><td>Output</td><td><p>[true,false,false]</p>
+</td></tr>
+					</table>
+				</div>
 			</div>
 			<div>
 				<h3><p><code>recurse</code></p>
@@ -641,12 +1169,35 @@ with:</p>
 <pre><code class="lang-jsq">recurse(.children[]) | .name</code></pre>
 
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						<tr><td></td><td><p>recurse(.foo[])</p>
+</td></tr>
+						<tr><td>Input</td><td><p>{&quot;foo&quot;:[{&quot;foo&quot;: []}, {&quot;foo&quot;:[{&quot;foo&quot;:[]}]}]}</p>
+</td></tr>
+						<tr><td>Output</td><td><p>{&quot;foo&quot;:[{&quot;foo&quot;:[]},{&quot;foo&quot;:[{&quot;foo&quot;:[]}]}]}</p>
+,<p>{&quot;foo&quot;:[]}</p>
+,<p>{&quot;foo&quot;:[{&quot;foo&quot;:[]}]}</p>
+,<p>{&quot;foo&quot;:[]}</p>
+</td></tr>
+					</table>
+				</div>
+			</div>
 			<div>
 				<h3><p><code>format(string)</code></p>
 </h3>
 				<p>Much like a simplified sprintf, <code>format</code> accepts an array of values to be integrated
 into a custom string.</p>
 
+			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+					</table>
+				</div>
 			</div>
 			
 			<hr/>
@@ -672,5 +1223,6 @@ into a custom string.</p>
 	</div>
 	
 	<script type="text/javascript" src="prism.min.js"></script>
+	<script type="text/javascript" src="examples.js"></script>
 </body>
 </html>
