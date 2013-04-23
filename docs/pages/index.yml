@@ -99,7 +99,7 @@ sections:
             output: '[42]'
           - program: '.foo'
             input: '{"notfoo": true, "alsonotfoo": false}'
-            output: "['null']"
+            output: "[]"
 
       - title: "`.[\"foo\"]`"
         body: |
@@ -112,11 +112,11 @@ sections:
         examples:
           - program: '.[0]'
             input: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
-            output: ['{"name":"JSON", "good":true}']
+            output: '{"name":"JSON", "good":true}'
 
           - program: '.[2]'
             input: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
-            output: ['null']
+            output: 'null'
 
       - title: "`.[]`"
         body: |
@@ -130,13 +130,15 @@ sections:
         examples:
           - program: '.[]'
             input: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
-            output:
-              - '{"name":"JSON", "good":true}'
-              - '{"name":"XML", "good":false}'
+            output: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
+
+          - program: '.[]'
+            input: '{"name":"JSON", "good":true}'
+            output: '["JSON", true]'
 
           - program: '.[]'
             input: '[]'
-            output: []
+            output: '[]'
 
       - title: "`,`"
         body: |
@@ -152,15 +154,15 @@ sections:
         examples:
           - program: '.foo, .bar'
             input: '{"foo": 42, "bar": "something else", "baz": true}'
-            output: ['42', '"something else"']
+            output: '[42, "something else"]'
 
           - program: ".user, .projects[]"
             input: '{"user":"tjoekbezoer", "projects": ["jsq", "wikiflow"]}'
-            output: ['"tjoekbezoer"', '"jsq"', '"wikiflow"']
+            output: '["tjoekbezoer", "jsq", "wikiflow"]'
 
           - program: '.[4,2]'
             input: '["a","b","c","d","e"]'
-            output: ['"e"', '"c"']
+            output: '["e", "c"]'
 
       - title: "`|`"
         body: |
@@ -177,7 +179,7 @@ sections:
         examples:
           - program: '.[] | .name'
             input: '[{"name":"JSON", "good":true}, {"name":"XML", "good":false}]'
-            output: ['"JSON"', '"XML"']
+            output: '["JSON", "XML"]'
 
   - title: Types and Values
     body: |
@@ -209,7 +211,7 @@ sections:
         examples:
           - program: "[.user, .projects[]]"
             input: '{"user":"tjoekbezoer", "projects": ["jsq", "wikiflow"]}'
-            output: ['["tjoekbezoer", "jsq", "wikiflow"]']
+            output: '[["tjoekbezoer", "jsq", "wikiflow"]]'
       
       - title: Lists — `1,2,3`
         body: |
@@ -295,12 +297,10 @@ sections:
         examples:
           - program: '{user, title: .titles[]}'
             input: '{"user":"tjoekbezoer","titles":["JSQ Primer", "More JSQ"]}'
-            output:
-              - '{"user":"tjoekbezoer", "title": "JSQ Primer"}'
-              - '{"user":"tjoekbezoer", "title": "More JSQ"}'
+            output: '[{"user":"tjoekbezoer", "title": "JSQ Primer"}, {"user":"tjoekbezoer", "title": "More JSQ"}]'
           - program: '{(.user): .titles}'
             input: '{"user":"tjoekbezoer","titles":["JSQ Primer", "More JSQ"]}'
-            output: ['{"tjoekbezoer": ["JSQ Primer", "More JSQ"]}']
+            output: '[{"tjoekbezoer": ["JSQ Primer", "More JSQ"]}]'
 
   - title: Builtin operators
     body: |
@@ -348,19 +348,19 @@ sections:
         examples:
           - program: '.a + 1'
             input: '{"a": 7}'
-            output: ['8']
+            output: '[8]'
           - program: '.a + .b'
             input: '{"a": [1,2], "b": [3,4]}'
-            output: ['[1,2,3,4]']
+            output: '[[1,2,3,4]]'
           - program: '.a + null'
             input: '{"a": 1}'
-            output: ['1']
+            output: '[1]'
           - program: '.a + 1'
             input: '{}'
-            output: ['1']
+            output: '[1]'
           - program: '{a: 1} + {b: 2} + {c: 3} + {a: 42}'
             input: 'null'
-            output: ['{"a": 42, "b": 2, "c": 3}']
+            output: '[{"a": 42, "b": 2, "c": 3}]'
 
       - title: Subtraction - `-`
         body: |
@@ -374,10 +374,10 @@ sections:
         examples:
           - program: '4 - .a'
             input: '{"a":3}'
-            output: ['1']
+            output: '[1]'
           - program: . - ["xml", "yaml"]
             input: '["xml", "yaml", "json"]'
-            output: ['["json"]']
+            output: '[["json"]]'
 
       - title: Multiplication, division - `*` and `/`
         body: |
@@ -387,7 +387,7 @@ sections:
         examples:
           - program: '10 / . * 3'
             input: 5
-            output: [6]
+            output: '[6]'
       
       - title: Binary — `and`, `or` and `xor`
         body: |
@@ -600,9 +600,9 @@ sections:
       value twice.
       
       For instance, calculating the average value of an array of numbers
-      requires a few variables in most languages - at least one to hold the
-      array, perhaps one for each element or for a loop counter. In jsq, it's
-      simply `add / length` - the `add` expression is given the array and
+      requires a few variables in most languages; at least one to hold the
+      array, and perhaps one for each element or for a loop counter. In jsq, it's
+      simply `add / length` — the `add` expression is given the array and
       produces its sum, and the `length` expression is given the array and
       produces its length.
       
@@ -665,7 +665,7 @@ sections:
   - title: Built-in functions
     body: |
       
-      Jsq comes with a set of builtin functions that allow you to perform extra operations on your
+      Jsq comes with a set of built-in functions that allow you to perform extra operations on your
       data, like filtering or transforming. Every function listed here is written in JavaScript,
       and defined in the public `jsq.fn` object, so it's possible to alter them, or add new ones
       of your own.
@@ -674,15 +674,12 @@ sections:
       - title: "`length`"
         body: |
 
-          The builtin function `length` gets the length of various
+          The built-in function `length` gets the length of various
           different types of values:
 
-          - The length of a **string** is obviously the number of characters.
-          
+          - The length of a **string** is the number of characters.
           - The length of an **array** is the number of elements.
-
           - The length of an **object** is the number of key-value pairs.
-
           - The length of **null** is zero.
           
           When trying to get the length of a number, it will return nothing.
@@ -695,7 +692,7 @@ sections:
       - title: "`keys`"
         body: |
           
-          The builtin function `keys`, when given an object, returns its keys
+          The built-in function `keys`, when given an object, returns its keys
           in a list. When given an array, it returns the valid indices  for that
           array: the integers from 0 to length-1.
           
@@ -739,8 +736,6 @@ sections:
         body: |
           
           `empty` returns no results. None at all. Not even `null`.
-
-          It's useful on occasion. You'll know if you need it :)
 
         examples:
           - program: '1, empty, 2'
@@ -802,8 +797,7 @@ sections:
         body: |
 
           The `tostring` function prints its input as a string. Jsq uses `JSON.stringify` for this,
-          so make sure it is available (it is in modern browsers, but for older browser you might
-          need to include [json2.js][json])
+          so make sure it is available (in older browser you might need to include [json2.js][json])
           
           [json]: https://github.com/douglascrockford/JSON-js
           
