@@ -44,6 +44,18 @@ jsq(o, '.users as $u | .data[] | {$u[.uid].name: (.grades|max)}');
 				<h3>{{{title}}}</h3>
 				{{{body}}}
 			</div>
+			<div class="examples">
+				<div class="header">Examples</div>
+				<div class="table">
+					<table>
+						{{#examples}}
+						<tr><td></td><td>{{{program}}}</td></tr>
+						<tr><td>Input</td><td>{{{input}}}</td></tr>
+						<tr><td>Output</td><td>{{{output}}}</td></tr>
+						{{/examples}}
+					</table>
+				</div>
+			</div>
 			{{/entries}}
 			
 			<hr/>
@@ -57,5 +69,6 @@ jsq(o, '.users as $u | .data[] | {$u[.uid].name: (.grades|max)}');
 	</div>
 	
 	<script type="text/javascript" src="prism.min.js"></script>
+	<script type="text/javascript" src="examples.js"></script>
 </body>
 </html>
