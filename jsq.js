@@ -917,6 +917,42 @@ var DEV = true;
 	
 	
 	// Runtime
+	function _assignment( input, output, children ) {
+		if( children.length == 2 ) {
+			// Value assignment to variable
+			_vars[children[1].val] = _expression(input, [], children[0]);
+			if( input instanceof Array )
+				output.push.apply(output, input);
+			else
+				output.push(input);
+		} else if( children.length == 3 ) {
+			// Value assignment to filter.
+			var op = children[1].val,
+					inputCopy = _copy(input),
+					exp, res;
+			
+			if( op == '=' ) {
+				// Simple assignment. Take the result from the rhs expression, and assign
+				// it to elements resulting from the lhs filter. Is the rhs expression produces
+				// multiple results, use the last.
+				exp = _expression(input, [], children[2]).pop();
+				res = exp !== void(0) ? exp : null;
+				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
+					obj[key] = res;
+				});
+			} else if( op == '|=' ) {
+				// 'Update' assignment. Use the lhs filter as input to evaluate the rhs expression, and
+				// assign the result to the elements resulting from the lhs filter.
+				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
+					exp = _expression([obj[key]], [], children[2]).pop();
+					res = exp !== void(0) ? exp : null;
+					obj[key] = res;
+				});
+			}
+			
+			output.push.apply(output, inputCopy);
+		}
+	}
 	function _binary( input, output, branch, undefined ) {
 		var op = branch.children[1].val,
 			lhv = branch.children[0],
@@ -1074,42 +1110,6 @@ var DEV = true;
 				break;
 		}
 		return output;
-	}
-	function _assignment( input, output, children ) {
-		if( children.length == 2 ) {
-			// Value assignment to variable
-			_vars[children[1].val] = _expression(input, [], children[0]);
-			if( input instanceof Array )
-				output.push.apply(output, input);
-			else
-				output.push(input);
-		} else if( children.length == 3 ) {
-			// Value assignment to filter.
-			var op = children[1].val,
-					inputCopy = _copy(input),
-					exp, res;
-			
-			if( op == '=' ) {
-				// Simple assignment. Take the result from the rhs expression, and assign
-				// it to elements resulting from the lhs filter. Is the rhs expression produces
-				// multiple results, use the last.
-				exp = _expression(input, [], children[2]).pop();
-				res = exp !== void(0) ? exp : null;
-				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
-					obj[key] = res;
-				});
-			} else if( op == '|=' ) {
-				// 'Update' assignment. Use the lhs filter as input to evaluate the rhs expression, and
-				// assign the result to the elements resulting from the lhs filter.
-				_filter(inputCopy, inputCopy, null, children[0].children, function( val, key, obj ) {
-					exp = _expression([obj[key]], [], children[2]).pop();
-					res = exp !== void(0) ? exp : null;
-					obj[key] = res;
-				});
-			}
-			
-			output.push.apply(output, inputCopy);
-		}
 	}
 	// Interpret a filter.
 	// callback = function( value, key, object ) and is called when the end of a
