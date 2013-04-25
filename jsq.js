@@ -1324,6 +1324,20 @@ var DEV = true;
 		'empty': function() {
 			return;
 		},
+		'filter': function( input, output, argument ) {
+			if( !input || input.constructor != Object )
+				_error('filter: Can only filter objects');
+			
+			var result = {};
+			for( var key in input ) {
+				var exp = _each(_expression([input[key]], [], argument), function( value ) {
+					if( value ) return false;
+				});
+				if( !exp )
+					result[key] = input[key];
+			}
+			output.push(result);
+		},
 		'format': function( input, output, argument ) {
 			if( !(input instanceof Array) || !argument || argument.name != STRING )
 				return;
@@ -1428,6 +1442,12 @@ var DEV = true;
 				}
 			}
 		},
+		'typeof': (function() {
+			var regex = /\[object (.*?)\]/;
+			return function( input, output ) {
+				output.push(Object.prototype.toString.call(input).match(regex)[1].toLowerCase());
+			};
+		})(),
 		'unique': function( input, output ) {
 			var i = -1
 				, len = input.length
@@ -1439,6 +1459,15 @@ var DEV = true;
 					result.push(value);
 			}
 			output.push(result);
+		},
+		'zip': function( input, output ) {
+			var obj = {}, el;
+			for( var i=0; i<input.length; i++ ) {
+				el = input[i];
+				if( el.length == 2 )
+					obj[el[0]] = el[1];
+			}
+			output.push(obj);
 		}
 	};
 	
