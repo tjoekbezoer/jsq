@@ -1351,9 +1351,11 @@ var DEV = true;
 		},
 		'map': function( input, output, argument ) {
 			if( input instanceof Object ) {
+				var result = [];
 				_each(input, function( input ) {
-					output.push.apply(output, _expression([input], [], argument));
+					result.push.apply(result, _expression([input], [], argument));
 				});
+				output.push(result);
 			}
 		},
 		'max': function( input, output, argument ) {
@@ -1366,9 +1368,11 @@ var DEV = true;
 			output.push(!input);
 		},
 		'pairs': function( input, output ) {
+			var result = [];
 			_each(input, function( val, key ) {
-				output.push([key, val]);
+				result.push([key, val]);
 			});
+			output.push(result);
 		},
 		'recurse': function( input, output, argument, level ) {
 			if( argument && argument.name == FILTER ) {
@@ -1387,7 +1391,7 @@ var DEV = true;
 			}
 		},
 		'select': function( input, output, argument ) {
-			var result = _each( _expression([input], [], argument), function( exp ) {
+			var result = _each(_expression([input], [], argument), function( exp ) {
 				if( exp ) return false;
 			});
 			if( !result )
