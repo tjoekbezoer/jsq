@@ -340,6 +340,10 @@
 		eq('1,2,empty,4', [1,2,4]);
 	});
 	
+	test('filter', function() {
+		eq(simple, 'filter(.<=2)', [{'first':1, 'second':2}]);
+	});
+	
 	test('format', function() {
 		eq('[1,2] | format("first:%0, second:%1")', ["first:1, second:2"]);
 	});
@@ -353,8 +357,8 @@
 	});
 	
 	test('map', function() {
-		eq(complex, '.fourth | map(.+1)', [2,3,4,5,6,7,8,9]);
-		eq(complex, '.fifth.sub | map(.+1)', [2,3]);
+		eq(complex, '.fourth | map(.+1)', [[2,3,4,5,6,7,8,9]]);
+		eq(complex, '.fifth.sub | map(.+1)', [[2,3]]);
 	});
 	
 	test('max', function() {
@@ -372,7 +376,7 @@
 	});
 	
 	test('pairs', function() {
-		eq(multiple, '.[1] | pairs', [['first',4], ['second',5]]);
+		eq(multiple, '.[1] | pairs', [[['first',4], ['second',5]]]);
 	});
 	
 	test('recurse', function() {
@@ -424,7 +428,15 @@
 		eq('false, 1, [1,2,3] | tostring', ['false', '1', '[1,2,3]']);
 	});
 	
+	test('typeof', function() {
+		eq('false, 1, "foo", [1,2,3], {}, null, undefined | typeof', ['boolean', 'number', 'string', 'array', 'object', 'null', 'undefined']);
+	});
+	
 	test('unique', function() {
 		eq('[1,2,2,3,"foo","bar","foo"] | unique', [[1,2,3,'foo','bar']]);
+	});
+	
+	test('zip', function() {
+		eq('[["foo","bar"], ["baz","bin"]] | zip', [{'foo':'bar', 'baz':'bin'}]);
 	});
 })();
